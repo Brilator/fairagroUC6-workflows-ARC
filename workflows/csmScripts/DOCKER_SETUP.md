@@ -18,10 +18,11 @@ cd workflows/csmTools
 ```
 
 This creates a Docker image `fairagro/csmtools:latest` with:
+
 - R 4.3
 - All system dependencies (GDAL, UDUNITS, etc.)
 - csmTools package from GitHub
-- csmtools_cli.R script at `workflows/cli/csmtools_cli.R`
+- csmtools_cli.R script at `workflows/csmScripts/csmtools_cli.R`
 
 #### Step 2: Update CWL Tools
 
