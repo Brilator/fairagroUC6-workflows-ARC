@@ -2,7 +2,7 @@
 ## -----------------------------------------------------------------------------------
 ## Script name: csmtools_cli.R
 ## Purpose: Command-line interface for csmTools workflow
-## Author: GitHub Copilot
+## Author: Joseph Gitahi
 ## Date Created: 2025-12-15
 ## -----------------------------------------------------------------------------------
 ## Usage examples:
