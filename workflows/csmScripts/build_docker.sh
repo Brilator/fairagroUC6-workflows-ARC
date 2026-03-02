@@ -24,17 +24,17 @@ if [ ! -f "csmtools_cli.R" ]; then
 fi
 
 # Build image
-docker build -t fairagro/csmtools:latest .
+docker build -t csmtools .
 
 echo ""
-echo "✓ Docker image built: fairagro/csmtools:latest"
+echo "✓ Docker image built: csmtools:latest"
 echo ""
 echo "Next steps:"
 echo "  1. Test the image:"
-echo "     docker run --rm fairagro/csmtools:latest Rscript /uc6_csmTools/csmtools_cli.R --help"
+echo "     docker run --rm csmtools:latest Rscript /csmTools/csmtools_cli.R --help"
 echo ""
-echo "  2. Update CWL tools to use fairagro/csmtools:latest"
+echo "  2. Update CWL tools to use csmtools:latest"
 echo "     See DOCKER_SETUP.md for details"
 echo ""
-echo "  3. (Optional) Push to Docker Hub:"
-echo "     docker push fairagro/csmtools:latest"
+# echo "  3. (Optional) Push to Docker Hub:"
+# echo "     docker push csmtools:latest"

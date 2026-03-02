@@ -16,11 +16,29 @@
 ## -----------------------------------------------------------------------------------
 
 suppressPackageStartupMessages({
-  library(csmTools)
   library(argparse)
   library(dplyr)
   library(lubridate)
 })
+
+# Load csmTools: prefer local source (devtools) when running from the repo,
+# fall back to installed package otherwise
+.cli_dir <- tryCatch(dirname(normalizePath(sub(
+  "^--file=", "",
+  commandArgs(trailingOnly = FALSE)[grep(
+    "^--file=",
+    commandArgs(trailingOnly = FALSE)
+  )]
+))), error = function(e) getwd())
+.root_dir <- normalizePath(file.path(.cli_dir, ".."), mustWork = FALSE)
+
+if (file.exists(file.path(.root_dir, "DESCRIPTION")) &&
+  file.exists(file.path(.root_dir, "NAMESPACE"))) {
+  if (!requireNamespace("devtools", quietly = TRUE)) install.packages("devtools")
+  suppressPackageStartupMessages(devtools::load_all(.root_dir, quiet = TRUE))
+} else {
+  suppressPackageStartupMessages(library(csmTools))
+}
 
 # Create main parser
 parser <- ArgumentParser(description = "csmTools - Data integration utilities for crop modeling")
@@ -64,8 +82,10 @@ sensor_parser$add_argument("--from", required = TRUE, help = "Start date (YYYY-M
 sensor_parser$add_argument("--to", required = TRUE, help = "End date (YYYY-MM-DD)")
 sensor_parser$add_argument("--radius", type = "double", default = 10, help = "Search radius in meters")
 sensor_parser$add_argument("--output", default = "sensor_data.json", help = "Output file path")
-sensor_parser$add_argument("--vars", default = "air_temperature,solar_radiation,volume_of_hydrological_precipitation", 
-                          help = "Comma-separated list of variables")
+sensor_parser$add_argument("--vars",
+  default = "air_temperature,solar_radiation,volume_of_hydrological_precipitation",
+  help = "Comma-separated list of variables"
+)
 
 # Command: get-soil
 soil_parser <- subparsers$add_parser(
@@ -83,9 +103,11 @@ assemble_parser <- subparsers$add_parser(
 )
 assemble_parser$add_argument("--components", nargs = "+", required = TRUE, help = "List of component files")
 assemble_parser$add_argument("--output", default = "assembled_data.json", help = "Output file path")
-assemble_parser$add_argument("--action", default = "merge_properties", 
-                            choices = c("merge_properties", "append_rows", "replace_section"),
-                            help = "Assembly action")
+assemble_parser$add_argument("--action",
+  default = "merge_properties",
+  choices = c("merge_properties", "append_rows", "replace_section"),
+  help = "Assembly action"
+)
 
 # Command: convert
 convert_parser <- subparsers$add_parser(
@@ -93,10 +115,14 @@ convert_parser <- subparsers$add_parser(
   help = "Convert dataset between different formats"
 )
 convert_parser$add_argument("--input", required = TRUE, help = "Input file path")
-convert_parser$add_argument("--from", required = TRUE, choices = c("user", "icasa", "nasa-power", "bonares"),
-                           help = "Input model format")
-convert_parser$add_argument("--to", required = TRUE, choices = c("icasa", "dssat"),
-                           help = "Output model format")
+convert_parser$add_argument("--from",
+  required = TRUE, choices = c("user", "icasa", "nasa-power", "bonares"),
+  help = "Input model format"
+)
+convert_parser$add_argument("--to",
+  required = TRUE, choices = c("icasa", "dssat"),
+  help = "Output model format"
+)
 convert_parser$add_argument("--output", default = "converted_data.json", help = "Output file path")
 
 # Command: simulate
@@ -115,188 +141,189 @@ build_parser <- subparsers$add_parser(
   help = "Build DSSAT simulation input files"
 )
 build_parser$add_argument("--input", required = TRUE, help = "Input DSSAT dataset (JSON)")
-build_parser$add_argument("--write-dssat-dir", action = "store_true", 
-                         help = "Write files to DSSAT directory")
+build_parser$add_argument("--write-dssat-dir",
+  action = "store_true",
+  help = "Write files to DSSAT directory"
+)
 
 # Parse arguments
 args <- parser$parse_args()
 
 # Execute command
 execute_command <- function(args) {
-  
   if (is.null(args$command)) {
     parser$print_help()
     quit(status = 1)
   }
-  
-  tryCatch({
-    
-    switch(args$command,
-           
-           # Extract field data
-           "extract-field-data" = {
-             message("Extracting field data from: ", args$path)
-             data <- get_field_data(
-               path = args$path,
-               exp_id = args$exp_id,
-               headers = args$headers,
-               keep_null_events = FALSE,
-               output_path = args$output
-             )
-             message("✓ Field data saved to: ", args$output)
-           },
-           
-           # Get weather data
-           "get-weather" = {
-             message("Downloading weather data from NASA POWER...")
-             data <- get_weather_data(
-               lon = args$lon,
-               lat = args$lat,
-               pars = c("air_temperature", "precipitation", "solar_radiation"),
-               res = "daily",
-               from = args$from,
-               to = args$to,
-               src = args$source,
-               output_path = args$output
-             )
-             message("✓ Weather data saved to: ", args$output)
-           },
-           
-           # Get sensor data
-           "get-sensor" = {
-             # Load credentials from environment
-             frost_creds <- list(
-               url = "https://keycloak.hef.tum.de/realms/master/protocol/openid-connect/token",
-               client_id = Sys.getenv("FROST_CLIENT_ID"),
-               client_secret = Sys.getenv("FROST_CLIENT_SECRET"),
-               username = Sys.getenv("FROST_USERNAME"),
-               password = Sys.getenv("FROST_PASSWORD")
-             )
-             
-             # Check credentials
-             if (any(sapply(frost_creds, function(x) x == ""))) {
-               stop("FROST credentials not set. Please set environment variables in .Renviron")
-             }
-             
-             message("Downloading sensor data from FROST server...")
-             vars <- strsplit(args$vars, ",")[[1]]
-             
-             data <- get_sensor_data(
-               url = Sys.getenv("FROST_USER_URL"),
-               creds = frost_creds,
-               var = vars,
-               lon = args$lon,
-               lat = args$lat,
-               radius = args$radius,
-               from = args$from,
-               to = args$to,
-               output_path = args$output
-             )
-             message("✓ Sensor data saved to: ", args$output)
-           },
-           
-           # Get soil data
-           "get-soil" = {
-             message("Extracting soil profile from SoilGrids...")
-             data <- get_soil_profile(
-               lon = args$lon,
-               lat = args$lat,
-               dir = tempdir(),
-               output_path = args$output
-             )
-             message("✓ Soil profile saved to: ", args$output)
-           },
-           
-           # Assemble dataset
-           "assemble" = {
-             message("Assembling dataset from ", length(args$components), " components...")
-             data <- assemble_dataset(
-               components = args$components,
-               keep_all = TRUE,
-               action = args$action,
-               output_path = args$output
-             )
-             message("✓ Assembled dataset saved to: ", args$output)
-           },
-           
-           # Convert dataset
-           "convert" = {
-             message("Converting dataset from ", args$from, " to ", args$to, "...")
-             data <- convert_dataset(
-               dataset = args$input,
-               input_model = args$from,
-               output_model = args$to,
-               output_path = args$output
-             )
-             message("✓ Converted dataset saved to: ", args$output)
-           },
-           
-           # Build inputs
-           "build-inputs" = {
-             message("Building DSSAT input files from: ", args$input)
-             
-             # Load dataset
-             dataset <- jsonlite::fromJSON(args$input)
-             
-             # Build files
-             result <- build_simulation_files(
-               dataset = dataset,
-               sol_append = FALSE,
-               write = TRUE,
-               write_in_dssat_dir = args$write_dssat_dir,
-               control_args = list(
-                 RSEED = 1243,
-                 WATER = "Y",
-                 NITRO = "Y",
-                 PHOTO = "C",
-                 GROUT = "Y"
-               )
-             )
-             message("✓ DSSAT input files created")
-           },
-           
-           # Run simulation
-           "simulate" = {
-             message("Running DSSAT simulation...")
-             
-             # Parse treatments
-             treatments <- if (!is.null(args$treatments)) {
-               as.integer(strsplit(args$treatments, ",")[[1]])
-             } else {
-               NULL
-             }
-             
-             # Run simulation
-             sims <- run_simulations(
-               filex_path = args$filex,
-               treatments = treatments,
-               framework = "dssat",
-               dssat_dir = args$dssat_dir,
-               sim_dir = args$output_dir
-             )
-             
-             message("✓ Simulation complete. Results in: ", args$output_dir)
-             
-             # Print summary
-             if (!is.null(sims$SUMMARY)) {
-               message("\nSimulation Summary:")
-               print(sims$SUMMARY %>% select(TRNO, GWAM, MDAT, HDAT))
-             }
-           },
-           
-           {
-             message("Unknown command: ", args$command)
-             parser$print_help()
-             quit(status = 1)
-           }
-    )
-    
-    message("\n✓ Command completed successfully")
-    
-  }, error = function(e) {
-    message("\n✗ Error: ", e$message)
-    quit(status = 1)
-  })
+
+  tryCatch(
+    {
+      switch(args$command,
+
+        # Extract field data
+        "extract-field-data" = {
+          message("Extracting field data from: ", args$path)
+          data <- get_field_data(
+            path = args$path,
+            exp_id = args$exp_id,
+            headers = args$headers,
+            keep_null_events = FALSE,
+            output_path = args$output
+          )
+          message("✓ Field data saved to: ", args$output)
+        },
+
+        # Get weather data
+        "get-weather" = {
+          message("Downloading weather data from NASA POWER...")
+          data <- get_weather_data(
+            lon = args$lon,
+            lat = args$lat,
+            pars = c("air_temperature", "precipitation", "solar_radiation"),
+            res = "daily",
+            from = args$from,
+            to = args$to,
+            src = args$source,
+            output_path = args$output
+          )
+          message("✓ Weather data saved to: ", args$output)
+        },
+
+        # Get sensor data
+        "get-sensor" = {
+          # Load credentials from environment
+          frost_creds <- list(
+            url = "https://keycloak.hef.tum.de/realms/master/protocol/openid-connect/token",
+            client_id = Sys.getenv("FROST_CLIENT_ID"),
+            client_secret = Sys.getenv("FROST_CLIENT_SECRET"),
+            username = Sys.getenv("FROST_USERNAME"),
+            password = Sys.getenv("FROST_PASSWORD")
+          )
+
+          # Check credentials
+          if (any(sapply(frost_creds, function(x) x == ""))) {
+            stop("FROST credentials not set. Please set environment variables in .Renviron")
+          }
+
+          message("Downloading sensor data from FROST server...")
+          vars <- strsplit(args$vars, ",")[[1]]
+
+          data <- get_sensor_data(
+            url = Sys.getenv("FROST_USER_URL"),
+            creds = frost_creds,
+            var = vars,
+            lon = args$lon,
+            lat = args$lat,
+            radius = args$radius,
+            from = args$from,
+            to = args$to,
+            output_path = args$output
+          )
+          message("✓ Sensor data saved to: ", args$output)
+        },
+
+        # Get soil data
+        "get-soil" = {
+          message("Extracting soil profile from SoilGrids...")
+          data <- get_soil_profile(
+            lon = args$lon,
+            lat = args$lat,
+            dir = tempdir(),
+            output_path = args$output
+          )
+          message("✓ Soil profile saved to: ", args$output)
+        },
+
+        # Assemble dataset
+        "assemble" = {
+          message("Assembling dataset from ", length(args$components), " components...")
+          data <- assemble_dataset(
+            components = args$components,
+            keep_all = TRUE,
+            action = args$action,
+            output_path = args$output
+          )
+          message("✓ Assembled dataset saved to: ", args$output)
+        },
+
+        # Convert dataset
+        "convert" = {
+          message("Converting dataset from ", args$from, " to ", args$to, "...")
+          data <- convert_dataset(
+            dataset = args$input,
+            input_model = args$from,
+            output_model = args$to,
+            output_path = args$output
+          )
+          message("✓ Converted dataset saved to: ", args$output)
+        },
+
+        # Build inputs
+        "build-inputs" = {
+          message("Building DSSAT input files from: ", args$input)
+
+          # Load dataset
+          dataset <- jsonlite::fromJSON(args$input)
+
+          # Build files
+          result <- build_simulation_files(
+            dataset = dataset,
+            sol_append = FALSE,
+            write = TRUE,
+            write_in_dssat_dir = args$write_dssat_dir,
+            control_args = list(
+              RSEED = 1243,
+              WATER = "Y",
+              NITRO = "Y",
+              PHOTO = "C",
+              GROUT = "Y"
+            )
+          )
+          message("✓ DSSAT input files created")
+        },
+
+        # Run simulation
+        "simulate" = {
+          message("Running DSSAT simulation...")
+
+          # Parse treatments
+          treatments <- if (!is.null(args$treatments)) {
+            as.integer(strsplit(args$treatments, ",")[[1]])
+          } else {
+            NULL
+          }
+
+          # Run simulation
+          sims <- run_simulations(
+            filex_path = args$filex,
+            treatments = treatments,
+            framework = "dssat",
+            dssat_dir = args$dssat_dir,
+            sim_dir = args$output_dir
+          )
+
+          message("✓ Simulation complete. Results in: ", args$output_dir)
+
+          # Print summary
+          if (!is.null(sims$SUMMARY)) {
+            message("\nSimulation Summary:")
+            print(sims$SUMMARY %>% select(TRNO, GWAM, MDAT, HDAT))
+          }
+        },
+        {
+          message("Unknown command: ", args$command)
+          parser$print_help()
+          quit(status = 1)
+        }
+      )
+
+      message("\n✓ Command completed successfully")
+    },
+    error = function(e) {
+      message("\n✗ Error: ", e$message)
+      quit(status = 1)
+    }
+  )
 }
 
 # Run
