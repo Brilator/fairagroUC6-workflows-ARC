@@ -4,7 +4,8 @@ cwlVersion: v1.2
 class: CommandLineTool
 
 requirements:
-  ShellCommandRequirement: {}
+  DockerRequirement:
+    dockerPull: joemureithi/phenocover:latest
   InlineJavascriptRequirement: {}
   InitialWorkDirRequirement:
     listing:
@@ -59,5 +60,4 @@ outputs:
 
 
 baseCommand:
-- phenocover
 - phenology-analyzer

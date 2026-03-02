@@ -4,7 +4,10 @@ cwlVersion: v1.2
 class: CommandLineTool
 
 requirements:
-  ShellCommandRequirement: {}
+  DockerRequirement:
+    dockerPull: joemureithi/raster2sensor:latest
+  NetworkAccess:
+    networkAccess: true
   InlineJavascriptRequirement: {}
 
 inputs:
@@ -31,6 +34,5 @@ outputs:
     glob: $(inputs.ndvi_file)
 
 baseCommand:
-- raster2sensor
 - plots
 - fetch-ndvi
