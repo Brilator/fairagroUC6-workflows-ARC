@@ -82,7 +82,7 @@ Example: See `convert-dataset-runtime.cwl`
 ```yaml
 requirements:
   DockerRequirement:
-    dockerPull: rocker/r-ver:4.3
+    dockerPull: rocker/r-ver:4.4.3
   NetworkAccess:
     networkAccess: true
   InitialWorkDirRequirement:
