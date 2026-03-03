@@ -7,16 +7,23 @@ doc: |
   Reads and processes field experiment data from an Excel template, 
   converting it to ICASA-compliant format..
 
+requirements:
+  DockerRequirement:
+    dockerPull: joemureithi/csmtools-cli:latest
+  InitialWorkDirRequirement:
+    listing:
+        - $(inputs.template_path)
+
+
 inputs:
-- id: path
-  type: string
-  default: "data/template_icasa_vba.xlsm"
-  doc: Path to template file
+- id: template_path
+  type: File
+  doc: Path to ICASA template file
   inputBinding:
     prefix: --path
-- id: exp-id
+    valueFrom: $(self.basename)
+- id: experiment_id
   type: string
-  default: "HWOC2501"
   doc: Experiment ID
   inputBinding:
     prefix: --exp-id
@@ -26,9 +33,8 @@ inputs:
   doc: Header format
   inputBinding:
     prefix: --headers
-- id: output
+- id: field_data_output
   type: string
-  default: "data/field_data_icasa.json"
   inputBinding:
     prefix: --output
 
@@ -36,7 +42,8 @@ outputs:
 - id: field_data
   type: File
   outputBinding:
-    glob: $(inputs.output)
+    glob: $(inputs.field_data_output)
 
 
-baseCommand: [Rscript, workflows/scripts/csmtools_cli.R, extract-field-data]
+baseCommand: 
+  - get-field-data

@@ -1,0 +1,19 @@
+# raster2sensor: fetch-ndvi
+trial_id: "Goetheweg-2024"
+sensorthingsapi_url: "https://tuzehez-fairagro.srv.mwn.de/frost/v1.1"
+ndvi_file: "ndvi_timeseries.csv"
+# phenocover: phenology-analyzer
+geojson_file:
+  class: File
+  path: data/field_location.geojson
+sowing_date: "03.10.2023"
+harvest_date: "30.07.2024"
+results_csv: "phenology_results.csv"
+visualization_png: "phenology_analysis.png"
+
+# csmtools: get-field-data
+template_path: 
+  class: File
+  path: data/template_icasa_vba.xlsm
+experiment_id: "HWOC2501"
+field_data_output: "field_data.json"
