@@ -85,9 +85,11 @@ get_weather_data_parser <- subparsers$add_parser(
 )
 get_weather_data_parser$add_argument("--lon", type = "double", required = TRUE, help = "Longitude")
 get_weather_data_parser$add_argument("--lat", type = "double", required = TRUE, help = "Latitude")
-get_weather_data_parser$add_argument("--from", required = TRUE, help = "Start date (YYYY-MM-DD)")
-get_weather_data_parser$add_argument("--to", required = TRUE, help = "End date (YYYY-MM-DD)")
-get_weather_data_parser$add_argument("--output", default = "weather_data.json", help = "Output file path")
+get_weather_data_parser$add_argument("--from", default = NULL, help = "Start date (YYYY-MM-DD); ignored if --season-file is given")
+get_weather_data_parser$add_argument("--to", default = NULL, help = "End date (YYYY-MM-DD); ignored if --season-file is given")
+get_weather_data_parser$add_argument("--season-file", default = NULL,
+                                    help = "JSON file with start_date/end_date (from identify-production-season)")
+get_weather_data_parser$add_argument("--output", default = "weather_nasa.json", help = "Output file path")
 get_weather_data_parser$add_argument("--source", default = "nasa_power", choices = c("nasa_power"), help = "Weather data source")
 
 # Command: get-sensor-data
@@ -157,6 +159,8 @@ convert_dataset_parser$add_argument("--from", required = TRUE, choices = c("user
                                     help = "Input model format")
 convert_dataset_parser$add_argument("--to", required = TRUE, choices = c("icasa", "dssat"),
                                     help = "Output model format")
+convert_dataset_parser$add_argument("--unmatched-code", default = NULL,
+                                    help = "Value to use for unmatched fields (e.g. 'na', '-99')")
 convert_dataset_parser$add_argument("--output", default = "converted_data.json", help = "Output file path")
 
 # Command: normalize-soil-profile
@@ -293,14 +297,26 @@ execute_command <- function(args) {
 
            # get_weather_data
            "get-weather-data" = {
+             # Resolve date range: --season-file takes priority over --from/--to
+             if (!is.null(args$season_file)) {
+               season    <- jsonlite::fromJSON(args$season_file)
+               from_date <- season$start_date
+               to_date   <- season$end_date
+               message("Using season dates from file: ", from_date, " -> ", to_date)
+             } else if (!is.null(args$from) && !is.null(args$to)) {
+               from_date <- args$from
+               to_date   <- args$to
+             } else {
+               stop("Provide either --season-file or both --from and --to")
+             }
              message("Downloading weather data from NASA POWER...")
              data <- get_weather_data(
                lon = args$lon,
                lat = args$lat,
                pars = c("air_temperature", "precipitation", "solar_radiation"),
                res = "daily",
-               from = args$from,
-               to = args$to,
+               from = from_date,
+               to = to_date,
                src = args$source,
                output_path = args$output
              )
@@ -356,10 +372,62 @@ execute_command <- function(args) {
            # get_soil_profile
            "get-soil-profile" = {
              message("Extracting soil profile from SoilGrids...")
+
+             # Monkey-patch .get_soilGrids_dataverse to use utils::unzip() instead
+             # of zip::unzip() — the libzip C library (zip.c) fails on the large
+             # Zip64 SoilGrids archive; utils::unzip() handles it correctly.
+             local({
+               patched <- function(dir = tempdir()) {
+                 metadata <- dataverse::dataset_files(
+                   dataset = "10.7910/DVN/1PEEY0",
+                   server  = "dataverse.harvard.edu"
+                 )
+                 by_country <- lapply(metadata, function(x)
+                   grepl("by country", x$dataFile$filename))
+                 ind      <- which(unlist(by_country))
+                 filename <- metadata[[ind]]$dataFile$filename
+                 zip_file  <- file.path(dir, filename)
+                 unzip_dir <- suppressWarnings(
+                   normalizePath(file.path(dir, sub(".zip", "", filename)))
+                 )
+                 if (!dir.exists(unzip_dir)) {
+                   if (!file.exists(zip_file)) {
+                     message("Downloading SoilGrids soil profiles...")
+                     file_bytes <- dataverse::get_file(
+                       file    = filename,
+                       dataset = "10.7910/DVN/1PEEY0",
+                       server  = "dataverse.harvard.edu"
+                     )
+                     writeBin(file_bytes, zip_file)
+                     rm(file_bytes)
+                     if (identical(dir, tempdir())) {
+                       message(paste(
+                         "The downloaded SoilGrids profile are in temp directory",
+                         dir, "as 'dir' is unspecified", sep = "\n"))
+                     } else {
+                       message(paste("The downloaded SoilGrids profile are in",
+                                     dir, sep = "\n"))
+                     }
+                   } else {
+                     message(paste("SoilGrids profiles were located in", dir,
+                                   sep = "\n"))
+                   }
+                   message("Extracting soil profile...")
+                   utils::unzip(zip_file, exdir = dir)
+                 } else {
+                   message(paste("SoilGrids profile were located in", dir,
+                                 sep = "\n"))
+                 }
+                 return(unzip_dir)
+               }
+               assignInNamespace(".get_soilGrids_dataverse", patched,
+                                 ns = "csmTools")
+             })
+
              data <- get_soil_profile(
                lon = args$lon,
                lat = args$lat,
-               dir = tempdir(),
+               dir = ".",          # CWL CWD — avoids size-limited s4n /tmp mount
                output_path = args$output
              )
              message("✓ Soil profile saved to: ", args$output)
@@ -394,12 +462,15 @@ execute_command <- function(args) {
            # convert_dataset
            "convert-dataset" = {
              message("Converting dataset from ", args$from, " to ", args$to, "...")
-             data <- convert_dataset(
-               dataset = args$input,
+             convert_args <- list(
+               dataset     = args$input,
                input_model = args$from,
                output_model = args$to,
                output_path = args$output
              )
+             if (!is.null(args$unmatched_code))
+               convert_args$unmatched_code <- args$unmatched_code
+             data <- do.call(convert_dataset, convert_args)
              message("✓ Converted dataset saved to: ", args$output)
            },
 
@@ -566,22 +637,150 @@ execute_command <- function(args) {
            # run_simulations
            "run-simulations" = {
              message("Running DSSAT simulation...")
-             # Set DSSAT executable path (cross-platform) if not already set
-             if (.Platform$OS.type == "unix" && Sys.getenv("DSSAT_CSM") == "") {
+             # Absolutize FILEX path so DSSAT can find it after any setwd()
+             filex_abs <- normalizePath(args$filex, mustWork = FALSE)
+             # Read FILEX once — used for treatment detection + soil file aliasing
+             filex_data <- DSSAT::read_filex(filex_abs)
+             # When the CWL runner executes as a non-root user, /root/dssat is
+             # not writable (DSSAT needs to write WORK files and output).
+             # run_simulations() on Unix hardcodes sim_dir = $HOME/dssat/, so
+             # we copy the DSSAT installation to that exact path ($HOME/dssat).
+             dssat_src <- "/root/dssat"
+             is_nonroot <- .Platform$OS.type == "unix" && Sys.getenv("HOME") != "/root"
+             if (is_nonroot && dir.exists(dssat_src)) {
+               dssat_work <- file.path(Sys.getenv("HOME"), "dssat")
+               if (!dir.exists(dssat_work)) {
+                 message("Copying DSSAT to: ", dssat_work)
+                 file.copy(dssat_src, Sys.getenv("HOME"), recursive = TRUE, overwrite = FALSE)
+                 # Rewrite DSSATPRO.L48 to reference the new location
+                 dssatpro_path <- file.path(dssat_work, "DSSATPRO.L48")
+                 if (file.exists(dssatpro_path)) {
+                   lines <- readLines(dssatpro_path, warn = FALSE)
+                   lines <- gsub(dssat_src, dssat_work, lines, fixed = TRUE)
+                   writeLines(lines, dssatpro_path)
+                 }
+               }
+               # Copy staged SOL and WTH files into the DSSAT data subdirs
+               sol_files <- list.files(getwd(), pattern = "\\.SOL$", full.names = TRUE)
+               wth_files <- list.files(getwd(), pattern = "\\.(WTH|CLI)$", full.names = TRUE)
+               if (length(sol_files) > 0) {
+                 file.copy(sol_files, file.path(dssat_work, "Soil"), overwrite = TRUE)
+                 # DSSAT derives the SOL filename from the first 2 chars of
+                 # ID_SOIL in the FIELDS section (e.g. DE02114767 => DE.SOL).
+                 # Create an alias so DSSAT can find our SOL file.
+                 # NOTE: read_filex section names include the full FILEX header
+                 # line, so match by prefix.
+                 fld_key <- grep("^FIELDS", names(filex_data), value = TRUE)[1]
+                 fields_df <- if (!is.na(fld_key)) filex_data[[fld_key]] else NULL
+                 if (!is.null(fields_df) && "ID_SOIL" %in% names(fields_df)) {
+                   id_soil <- trimws(fields_df$ID_SOIL[1])
+                   expected_sol <- paste0(toupper(substr(id_soil, 1, 2)), ".SOL")
+                   for (sf in sol_files) {
+                     src_name  <- basename(sf)
+                     dest_alias <- file.path(dssat_work, "Soil", expected_sol)
+                     if (!identical(src_name, expected_sol)) {
+                       file.copy(sf, dest_alias, overwrite = TRUE)
+                       message("Aliased ", src_name, " => ", expected_sol)
+                     }
+                   }
+                 }
+               }
+               if (length(wth_files) > 0) {
+                 # Reformat WTH files to canonical DSSAT format first (in staging dir).
+                 # DSSAT uses dirname(FILEX) as its "DATA PATH" for WTH lookup,
+                 # so the staged copies in getwd() must be clean before any copy.
+                 # build_simulation_files may produce comment lines (!) and duplicate
+                 # station header entries (sensor + NASA). DSSAT requires the form:
+                 #   *WEATHER DATA : <title>
+                 #   <blank>
+                 #   @ INSI  LAT ...
+                 #   <single station data line>
+                 #   @DATE  SRAD ...
+                 #   <data rows...>
+                 reformat_wth <- function(wf) {
+                   if (!file.exists(wf)) return(invisible(NULL))
+                   lns        <- readLines(wf, warn = FALSE)
+                   title_idx  <- grep("^\\*WEATHER", lns)
+                   insi_idx   <- grep("^@ INSI",    lns)
+                   date_idx   <- grep("^@DATE",     lns)
+                   if (length(insi_idx) == 0 || length(date_idx) == 0) return(invisible(NULL))
+                   h <- insi_idx[1]; d <- date_idx[1]
+                   cand          <- seq(h + 1L, d - 1L)
+                   cand          <- cand[cand <= length(lns)]
+                   station_lines <- lns[cand[nchar(trimws(lns[cand])) > 0L]]
+                   station_line  <- tail(station_lines, 1)
+                   data_rows     <- lns[seq(d + 1L, length(lns))]
+                   title_line    <- if (length(title_idx) > 0) lns[title_idx[1]] else "*WEATHER DATA"
+                   canonical     <- c(title_line, "", lns[h], station_line, lns[d], data_rows)
+                   writeLines(canonical, wf)
+                   n_removed <- length(station_lines) - 1L
+                   message("Reformatted ", basename(wf),
+                           if (n_removed > 0) paste0(" (removed ", n_removed, " duplicate station line(s))") else "")
+                 }
+                 lapply(wth_files, reformat_wth)
+                 file.copy(wth_files, file.path(dssat_work, "Weather"), overwrite = TRUE)
+               }
+               Sys.setenv(DSSAT_CSM = file.path(dssat_work, "dscsm048"))
+               message("DSSAT_CSM => ", Sys.getenv("DSSAT_CSM"))
+             } else if (.Platform$OS.type == "unix" && Sys.getenv("DSSAT_CSM") == "") {
                Sys.setenv(DSSAT_CSM = file.path(Sys.getenv("HOME"), "dssat", "dscsm048"))
              }
+             # Determine effective dssat_dir (explicit arg takes priority)
+             effective_dssat_dir <- if (!is.null(args$dssat_dir)) {
+               args$dssat_dir
+             } else {
+               dirname(Sys.getenv("DSSAT_CSM"))
+             }
+             # Auto-detect treatments from FILEX when --treatments not provided.
+             # NOTE: read_filex section names include the full FILEX header line
+             # (e.g. "TREATMENTS -------------FACTOR LEVELS---"), so we match
+             # by prefix rather than exact name.
+             # Column for treatment number may be "N" or "TRTNO" (DSSAT pkg ver).
              treatments <- if (!is.null(args$treatments)) {
                as.integer(strsplit(args$treatments, ",")[[1]])
              } else {
-               NULL
+               trt_key <- grep("^TREATMENTS", names(filex_data), value = TRUE)[1]
+               trt_df  <- if (!is.na(trt_key)) filex_data[[trt_key]] else NULL
+               if (!is.null(trt_df) && nrow(trt_df) > 0) {
+                 trt_col <- intersect(c("N", "TRTNO"), names(trt_df))[1]
+                 if (!is.na(trt_col)) as.integer(trt_df[[trt_col]]) else seq_len(nrow(trt_df))
+               } else {
+                 1L
+               }
              }
-             sims <- run_simulations(
-               filex_path = args$filex,
-               treatments = treatments,
-               framework = "dssat",
-               dssat_dir = args$dssat_dir,
-               sim_dir = args$output_dir
+             message("Treatments: ", paste(treatments, collapse = ", "))
+             sims <- tryCatch(
+               run_simulations(
+                 filex_path = filex_abs,
+                 treatments = treatments,
+                 framework = "dssat",
+                 dssat_dir = effective_dssat_dir,
+                 sim_dir = args$output_dir
+               ),
+               error = function(e) {
+                 # Print WARNING.OUT content for diagnostics
+                 warn_path <- file.path(Sys.getenv("HOME"), "dssat", "WARNING.OUT")
+                 if (file.exists(warn_path)) {
+                   message("\n=== WARNING.OUT ===")
+                   cat(readLines(warn_path, warn=FALSE), sep="\n")
+                 }
+                 stop(e)
+               }
              )
+             # run_simulations on Unix ignores sim_dir and writes outputs to
+             # $HOME/dssat/ — copy the .OUT files to the requested output dir
+             dssat_home_dir <- file.path(Sys.getenv("HOME"), "dssat")
+             out_files <- list.files(
+               path = dssat_home_dir,
+               pattern = "\\.OUT$",
+               full.names = TRUE
+             )
+             out_files <- out_files[!grepl("INFO|RunList|WARNING", out_files)]
+             dir.create(args$output_dir, showWarnings = FALSE, recursive = TRUE)
+             if (length(out_files) > 0 && !identical(dssat_home_dir, args$output_dir)) {
+               file.copy(out_files, args$output_dir, overwrite = TRUE)
+               message("Copied ", length(out_files), " output file(s) to: ", args$output_dir)
+             }
              message("✓ Simulation complete. Results in: ", args$output_dir)
              if (!is.null(sims$Summary)) {
                message("\nSimulation Summary:")

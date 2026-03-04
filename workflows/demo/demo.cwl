@@ -54,6 +54,44 @@ inputs:
   type: string
 - id: frost_user_url
   type: string
+- id: sensor_icasa_output
+  type: string
+- id: nasa_data_output
+  type: string
+- id: nasa_icasa_output
+  type: string
+- id: soil_data_output
+  type: string
+- id: gs_codes
+  type: string
+- id: gs_dates_output
+  type: string
+- id: gs_icasa_output
+  type: string
+- id: assembled_icasa_output
+  type: string
+- id: dataset_dssat_output
+  type: string
+- id: normalized_soil_output
+  type: string
+- id: initial_layers_output
+  type: string
+- id: depth_seq
+  type: string
+- id: paw
+  type: double
+- id: total_n
+  type: double
+- id: simulations_output_dir
+  type: string
+- id: treatments
+  type: string
+- id: plot_output_file
+  type: string
+- id: plot_treatment_labels
+  type: string?
+- id: plot_legend_title
+  type: string?
 
 outputs:
 - id: phenology_results_png
@@ -74,6 +112,42 @@ outputs:
 - id: sensor_data
   type: File
   outputSource: get-sensor-data/sensor_data
+- id: sensor_data_icasa
+  type: File
+  outputSource: convert-sensor-data-icasa/sensor_data_icasa
+- id: nasa_data
+  type: File
+  outputSource: get-weather-data/nasa_data
+- id: nasa_data_icasa
+  type: File
+  outputSource: convert-nasa-data-icasa/nasa_data_icasa
+- id: soil_data
+  type: File
+  outputSource: get-soil-profile/soil_data
+- id: gs_dates
+  type: File
+  outputSource: lookup-gs-dates/gs_dates
+- id: gs_dates_icasa
+  type: File
+  outputSource: convert-gs-dates-icasa/gs_dates_icasa
+- id: assembled_icasa
+  type: File
+  outputSource: assemble-icasa-dataset/assembled_icasa
+- id: dataset_dssat
+  type: File
+  outputSource: convert-icasa-dssat/dataset_dssat
+- id: normalized_soil
+  type: File
+  outputSource: normalize-soil-profile/normalized_soil
+- id: initial_layers
+  type: File
+  outputSource: calculate-initial-layers/initial_layers
+- id: simulations_dir
+  type: Directory
+  outputSource: run-simulations/simulations_dir
+- id: growth_plot
+  type: File
+  outputSource: plot-results/growth_plot
 
 steps:
 - id: fetch-ndvi
@@ -158,3 +232,152 @@ steps:
   run: ../csmTools/get-sensor-data.cwl
   out:
   - sensor_data
+- id: convert-sensor-data-icasa
+  in:
+  - id: sensor_data
+    source: get-sensor-data/sensor_data
+  - id: sensor_icasa_output
+    source: sensor_icasa_output
+  run: ../csmTools/convert-sensor-data-icasa.cwl
+  out:
+  - sensor_data_icasa
+- id: get-weather-data
+  in:
+  - id: lon
+    source: lon
+  - id: lat
+    source: lat
+  - id: season_file
+    source: identify-production-season/production_season
+  - id: nasa_data_output
+    source: nasa_data_output
+  run: ../csmTools/get-weather-data.cwl
+  out:
+  - nasa_data
+- id: convert-nasa-data-icasa
+  in:
+  - id: nasa_data
+    source: get-weather-data/nasa_data
+  - id: nasa_icasa_output
+    source: nasa_icasa_output
+  run: ../csmTools/convert-nasa-data-icasa.cwl
+  out:
+  - nasa_data_icasa
+- id: get-soil-profile
+  in:
+  - id: lon
+    source: lon
+  - id: lat
+    source: lat
+  - id: soil_data_output
+    source: soil_data_output
+  run: ../csmTools/get-soil-profile.cwl
+  out:
+  - soil_data
+- id: lookup-gs-dates
+  in:
+  - id: phenology_csv
+    source: phenology-analyzer/phenology_results_csv
+  - id: gs_codes
+    source: gs_codes
+  - id: gs_dates_output
+    source: gs_dates_output
+  run: ../csmTools/lookup-gs-dates.cwl
+  out:
+  - gs_dates
+- id: convert-gs-dates-icasa
+  in:
+  - id: gs_dates
+    source: lookup-gs-dates/gs_dates
+  - id: gs_icasa_output
+    source: gs_icasa_output
+  run: ../csmTools/convert-gs-dates-icasa.cwl
+  out:
+  - gs_dates_icasa
+- id: assemble-icasa-dataset
+  in:
+  - id: sensor_icasa
+    source: convert-sensor-data-icasa/sensor_data_icasa
+  - id: nasa_icasa
+    source: convert-nasa-data-icasa/nasa_data_icasa
+  - id: soil_data
+    source: get-soil-profile/soil_data
+  - id: field_data
+    source: get-field-data/field_data
+  - id: gs_dates_icasa
+    source: convert-gs-dates-icasa/gs_dates_icasa
+  - id: assembled_icasa_output
+    source: assembled_icasa_output
+  run: ../csmTools/assemble-icasa-dataset.cwl
+  out:
+  - assembled_icasa
+- id: convert-icasa-dssat
+  in:
+  - id: assembled_icasa
+    source: assemble-icasa-dataset/assembled_icasa
+  - id: dataset_dssat_output
+    source: dataset_dssat_output
+  run: ../csmTools/convert-icasa-dssat.cwl
+  out:
+  - dataset_dssat
+- id: normalize-soil-profile
+  in:
+  - id: dataset_dssat
+    source: convert-icasa-dssat/dataset_dssat
+  - id: normalized_soil_output
+    source: normalized_soil_output
+  run: ../csmTools/normalize-soil-profile.cwl
+  out:
+  - normalized_soil
+- id: calculate-initial-layers
+  in:
+  - id: dataset_dssat
+    source: convert-icasa-dssat/dataset_dssat
+  - id: initial_layers_output
+    source: initial_layers_output
+  run: ../csmTools/calculate-initial-layers.cwl
+  out:
+  - initial_layers
+- id: build-simulation-files
+  in:
+  - id: dataset_dssat
+    source: convert-icasa-dssat/dataset_dssat
+  - id: depth_seq
+    source: depth_seq
+  - id: paw
+    source: paw
+  - id: total_n
+    source: total_n
+  run: ../csmTools/build-simulation-files.cwl
+  out:
+  - filex
+  - soil_file
+  - weather_files
+- id: run-simulations
+  in:
+  - id: filex
+    source: build-simulation-files/filex
+  - id: soil_file
+    source: build-simulation-files/soil_file
+  - id: weather_files
+    source: build-simulation-files/weather_files
+  - id: treatments
+    source: treatments
+  - id: output_dir
+    source: simulations_output_dir
+  run: ../csmTools/run-simulations.cwl
+  out:
+  - simulations_dir
+- id: plot-results
+  in:
+  - id: simulations_dir
+    source: run-simulations/simulations_dir
+  - id: output_file
+    source: plot_output_file
+  - id: treatment_labels
+    source: plot_treatment_labels
+  - id: legend_title
+    source: plot_legend_title
+  run: ../csmTools/plot-results.cwl
+  out:
+  - growth_plot

@@ -6,6 +6,8 @@ class: CommandLineTool
 requirements:
   DockerRequirement:
     dockerPull: joemureithi/phenocover:latest
+  NetworkAccess:
+    networkAccess: true
   InlineJavascriptRequirement: {}
   InitialWorkDirRequirement:
     listing:

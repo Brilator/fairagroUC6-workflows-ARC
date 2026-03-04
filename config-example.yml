@@ -26,6 +26,9 @@ experiment_id: "HWOC2501"
 field_data_output: "field_data.json"
 
 # csmtools: identify-production-season
+field_data:
+  class: File
+  path: field_data.json
 period: "cultivation_season"
 output_format: "bounds"
 production_season_output: "production_season.json"
@@ -39,6 +42,85 @@ season_file:
 radius: 50000
 vars: "air_temperature,solar_radiation,volume_of_hydrological_precipitation"
 sensor_data_output: "weather_sensor.json"
+
+# csmtools: convert-sensor-data-icasa
+sensor_data:
+  class: File
+  path: weather_sensor.json
+sensor_icasa_output: "weather_sensor_icasa.json"
+
+# csmtools: get-weather-data
+nasa_data_output: "weather_nasa.json"
+
+# csmtools: convert-nasa-data-icasa
+nasa_data:
+  class: File
+  path: weather_nasa.json
+nasa_icasa_output: "weather_nasa_icasa.json"
+# csmtools: get-soil-profile
+soil_data_output: "soil_data.json"
+# csmtools: lookup-gs-dates
+phenology_csv:
+  class: File
+  path: phenology_results.csv
+gs_codes: "10,65,87"
+gs_dates_output: "gs_dates.json"
+# csmtools: convert-gs-dates-icasa
+gs_dates:
+  class: File
+  path: gs_dates.json
+gs_icasa_output: "gs_dates_icasa.json"
+# csmtools: assemble-icasa-dataset
+sensor_icasa:
+  class: File
+  path: weather_sensor_icasa.json
+nasa_icasa:
+  class: File
+  path: weather_nasa_icasa.json
+soil_data:
+  class: File
+  path: soil_data.json
+gs_dates_icasa:
+  class: File
+  path: gs_dates_icasa.json
+assembled_icasa_output: "assembled_icasa.json"
+# csmtools: convert-icasa-dssat
+assembled_icasa:
+  class: File
+  path: assembled_icasa.json
+dataset_dssat_output: "dataset_dssat.json"
+# csmtools: normalize-soil-profile + calculate-initial-layers
+dataset_dssat:
+  class: File
+  path: dataset_dssat.json
+normalized_soil_output: "normalized_soil.json"
+initial_layers_output: "initial_layers.json"
+# csmtools: build-simulation-files + run-simulations + plot-results (demo workflow inputs)
+depth_seq: "5,10,20,30,40,50,60,70,90,110,130,150,170,190,210"
+paw: 100.0
+total_n: 50.0
+simulations_output_dir: "simulations"
+treatments: "1,3,7"
+plot_output_file: "growth_plot.png"
+plot_treatment_labels: "0 kg N/ha,147 kg N/ha,180 kg N/ha"
+plot_legend_title: "Fertilization treatment"
+# csmtools: run-simulations (standalone test)
+filex:
+  class: File
+  path: HWOC2501.WHX
+soil_file:
+  class: File
+  path: LL.SOL
+weather_files:
+  - class: File
+    path: LL912401.WTH
+  - class: File
+    path: LL912501.WTH
+output_dir: "simulations"
+# csmtools: plot-results (standalone test)
+simulations_dir:
+  class: Directory
+  path: simulations
 
 # FROST credentials — fill in your actual values in config.yml (never commit secrets)
 frost_client_id: "YOUR_FROST_CLIENT_ID"

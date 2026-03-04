@@ -348,9 +348,17 @@ rsconnect/
 # LOGS
 *.log
 
-# raster2sensor FOLDERS 
+# FOLDERS 
 data/
 logs/
+simulations/
+outputs/
+
+# TEMP DIRECTORIES (R tempdir, get-soil-profile download cache)
+Rtmp*/
+temp/
+tmp/
+.vscode/
 
 # ENV FILES
 *.Renviron
