@@ -1,0 +1,48 @@
+# =============================================================================
+# Demo workflow configuration — EXAMPLE / TEMPLATE
+# Copy this file to config.yml and fill in your real FROST credentials.
+# config.yml is gitignored so secrets are never committed.
+# =============================================================================
+
+# raster2sensor: fetch-ndvi
+trial_id: "Ochsenwasen-2025"
+sensorthingsapi_url: "https://tuzehez-fairagro.srv.mwn.de/frost/v1.1"
+ndvi_file: "ndvi_timeseries.csv"
+
+# phenocover: phenology-analyzer
+geojson_file:
+  class: File
+  path: data/field_location.geojson
+sowing_date: "03.10.2023"
+harvest_date: "30.07.2024"
+results_csv: "phenology_results.csv"
+visualization_png: "phenology_analysis.png"
+
+# csmtools: get-field-data
+template_path:
+  class: File
+  path: data/template_icasa_vba.xlsm
+experiment_id: "HWOC2501"
+field_data_output: "field_data.json"
+
+# csmtools: identify-production-season
+period: "cultivation_season"
+output_format: "bounds"
+production_season_output: "production_season.json"
+
+# csmtools: get-sensor-data
+lon: 10.645269
+lat: 49.20868
+season_file:
+  class: File
+  path: production_season.json
+radius: 50000
+vars: "air_temperature,solar_radiation,volume_of_hydrological_precipitation"
+sensor_data_output: "weather_sensor.json"
+
+# FROST credentials — fill in your actual values in config.yml (never commit secrets)
+frost_client_id: "YOUR_FROST_CLIENT_ID"
+frost_client_secret: "YOUR_FROST_CLIENT_SECRET"
+frost_username: "YOUR_FROST_USERNAME"
+frost_password: "YOUR_FROST_PASSWORD"
+frost_user_url: "https://YOUR_FROST_SERVER/FROST-Server/v1.0/"

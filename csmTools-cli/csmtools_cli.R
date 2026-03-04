@@ -26,6 +26,7 @@ suppressPackageStartupMessages({
   library(argparse)
   library(dplyr)
   library(lubridate)
+  library(jsonlite)
 })
 
 # Load csmTools: prefer local source (devtools) when running from the repo,
@@ -65,16 +66,17 @@ get_field_data_parser$add_argument("--headers", default = "long", choices = c("l
 # Command: identify-production-season
 identify_parser <- subparsers$add_parser(
   "identify-production-season",
-  help = "Identify cultivation season bounds from an ICASA template (identify_production_season)"
+  help = "Identify cultivation season bounds from get-field-data output JSON (identify_production_season)"
 )
-identify_parser$add_argument("--path", required = TRUE, help = "Path to ICASA template file")
-identify_parser$add_argument("--exp-id", required = TRUE, help = "Experiment ID")
+identify_parser$add_argument("--input", required = TRUE, help = "Path to field data JSON from get-field-data")
 identify_parser$add_argument("--period", default = "cultivation_season",
                              choices = c("cultivation_season", "growing_season"),
                              help = "Period type to identify")
-identify_parser$add_argument("--output-format", default = "bounds",
+identify_parser$add_argument("--format", default = "bounds",
                              choices = c("bounds", "full"),
                              help = "Output format: 'bounds' returns start/end dates")
+identify_parser$add_argument("--output", default = "production_season.json",
+                             help = "Output JSON file with start_date and end_date fields")
 
 # Command: get-weather-data
 get_weather_data_parser <- subparsers$add_parser(
@@ -95,12 +97,21 @@ get_sensor_data_parser <- subparsers$add_parser(
 )
 get_sensor_data_parser$add_argument("--lon", type = "double", required = TRUE, help = "Longitude")
 get_sensor_data_parser$add_argument("--lat", type = "double", required = TRUE, help = "Latitude")
-get_sensor_data_parser$add_argument("--from", required = TRUE, help = "Start date (YYYY-MM-DD)")
-get_sensor_data_parser$add_argument("--to", required = TRUE, help = "End date (YYYY-MM-DD)")
-get_sensor_data_parser$add_argument("--radius", type = "double", default = 10, help = "Search radius in meters")
+get_sensor_data_parser$add_argument("--from", default = NULL, help = "Start date (YYYY-MM-DD); ignored if --season-file is given")
+get_sensor_data_parser$add_argument("--to", default = NULL, help = "End date (YYYY-MM-DD); ignored if --season-file is given")
+get_sensor_data_parser$add_argument("--season-file", default = NULL,
+                                    help = "JSON file from identify-production-season with start_date/end_date fields")
+get_sensor_data_parser$add_argument("--radius", type = "double", default = 50000, help = "Search radius in meters")
 get_sensor_data_parser$add_argument("--output", default = "sensor_data.json", help = "Output file path")
 get_sensor_data_parser$add_argument("--vars", default = "air_temperature,solar_radiation,volume_of_hydrological_precipitation",
                                     help = "Comma-separated list of variables")
+get_sensor_data_parser$add_argument("--frost-client-id", default = "", help = "FROST API client ID")
+get_sensor_data_parser$add_argument("--frost-client-secret", default = "", help = "FROST API client secret")
+get_sensor_data_parser$add_argument("--frost-username", default = "", help = "FROST API username")
+get_sensor_data_parser$add_argument("--frost-password", default = "", help = "FROST API password")
+get_sensor_data_parser$add_argument("--frost-user-url", default = "", help = "FROST server URL")
+get_sensor_data_parser$add_argument("--frost-token-url", default = "",
+                                    help = "FROST Keycloak token URL (default: keycloak.hef.tum.de endpoint)")
 
 # Command: get-soil-profile
 get_soil_profile_parser <- subparsers$add_parser(
@@ -260,21 +271,24 @@ execute_command <- function(args) {
 
            # identify_production_season
            "identify-production-season" = {
-             message("Identifying production season from template: ", args$path)
-             field_data <- get_field_data(
-               path = args$path,
-               exp_id = args$exp_id,
-               headers = "long",
-               keep_null_events = FALSE
-             )
+             message("Identifying production season from: ", args$input)
+             field_data <- csmTools:::resolve_input(args$input)
              mngt_tables <- field_data[!names(field_data) %in% c("GENERAL", "PERSONS", "INSTITUTIONS")]
              bounds <- identify_production_season(
                mngt_tables,
                period = args$period,
-               output = args$output_format
+               output = args$format
              )
-             message("Season bounds:")
-             print(bounds)
+             bounds_json <- list(
+               start_date = format(as.Date(bounds[1]), "%Y-%m-%d"),
+               end_date   = format(as.Date(bounds[2]), "%Y-%m-%d")
+             )
+             write(
+               jsonlite::toJSON(bounds_json, auto_unbox = TRUE, pretty = TRUE),
+               file = args$output
+             )
+             message("Season bounds: ", bounds_json$start_date, " -> ", bounds_json$end_date)
+             message("\u2713 Season bounds saved to: ", args$output)
            },
 
            # get_weather_data
@@ -295,27 +309,45 @@ execute_command <- function(args) {
 
            # get_sensor_data
            "get-sensor-data" = {
+             # Resolve date range: --season-file takes priority over --from/--to
+             if (!is.null(args$season_file)) {
+               season    <- jsonlite::fromJSON(args$season_file)
+               from_date <- season$start_date
+               to_date   <- season$end_date
+               message("Using season dates from file: ", from_date, " -> ", to_date)
+             } else if (!is.null(args$from) && !is.null(args$to)) {
+               from_date <- args$from
+               to_date   <- args$to
+             } else {
+               stop("Provide either --season-file or both --from and --to")
+             }
+             # Resolve FROST credentials from CLI args
+             token_url <- if (nchar(args$frost_token_url) > 0) args$frost_token_url else
+               "https://keycloak.hef.tum.de/realms/master/protocol/openid-connect/token"
              frost_creds <- list(
-               url = "https://keycloak.hef.tum.de/realms/master/protocol/openid-connect/token",
-               client_id = Sys.getenv("FROST_CLIENT_ID"),
-               client_secret = Sys.getenv("FROST_CLIENT_SECRET"),
-               username = Sys.getenv("FROST_USERNAME"),
-               password = Sys.getenv("FROST_PASSWORD")
+               url           = token_url,
+               client_id     = args$frost_client_id,
+               client_secret = args$frost_client_secret,
+               username      = args$frost_username,
+               password      = args$frost_password
              )
-             if (any(sapply(frost_creds, function(x) x == ""))) {
-               stop("FROST credentials not set. Please set environment variables in .Renviron")
+             missing_vars <- names(which(sapply(frost_creds[-1], function(x) x == "")))
+             if (length(missing_vars) > 0) {
+               stop("Missing FROST arguments: --frost-",
+                    paste(gsub("_", "-", missing_vars), collapse = ", --frost-"),
+                    "\nOr set ${FROST_*} values in demo-inputs.yml via .env")
              }
              message("Downloading sensor data from FROST server...")
              vars <- strsplit(args$vars, ",")[[1]]
              data <- get_sensor_data(
-               url = Sys.getenv("FROST_USER_URL"),
-               creds = frost_creds,
-               var = vars,
-               lon = args$lon,
-               lat = args$lat,
-               radius = args$radius,
-               from = args$from,
-               to = args$to,
+               url         = args$frost_user_url,
+               creds       = frost_creds,
+               var         = vars,
+               lon         = args$lon,
+               lat         = args$lat,
+               radius      = args$radius,
+               from        = from_date,
+               to          = to_date,
                output_path = args$output
              )
              message("✓ Sensor data saved to: ", args$output)

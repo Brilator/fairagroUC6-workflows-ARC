@@ -26,6 +26,34 @@ inputs:
   type: string
 - id: field_data_output
   type: string
+- id: period
+  type: string
+- id: output_format
+  type: string
+- id: production_season_output
+  type: string
+- id: lon
+  type: float
+- id: lat
+  type: float
+- id: radius
+  type: float
+- id: vars
+  type: string
+- id: sensor_data_output
+  type: string
+# FROST credentials flow: config.yml (gitignored, copied from config-example.yml)
+# → CWL inputs below → EnvVarRequirement → Docker container
+- id: frost_client_id
+  type: string
+- id: frost_client_secret
+  type: string
+- id: frost_username
+  type: string
+- id: frost_password
+  type: string
+- id: frost_user_url
+  type: string
 
 outputs:
 - id: phenology_results_png
@@ -40,6 +68,12 @@ outputs:
 - id: field_data
   type: File
   outputSource: get-field-data/field_data
+- id: production_season
+  type: File
+  outputSource: identify-production-season/production_season
+- id: sensor_data
+  type: File
+  outputSource: get-sensor-data/sensor_data
 
 steps:
 - id: fetch-ndvi
@@ -82,3 +116,45 @@ steps:
   run: ../csmTools/get-field-data.cwl
   out:
   - field_data
+- id: identify-production-season
+  in:
+  - id: field_data
+    source: get-field-data/field_data
+  - id: period
+    source: period
+  - id: output_format
+    source: output_format
+  - id: production_season_output
+    source: production_season_output
+  run: ../csmTools/identify-production-season.cwl
+  out:
+  - production_season
+  - start_date
+  - end_date
+- id: get-sensor-data
+  in:
+  - id: lon
+    source: lon
+  - id: lat
+    source: lat
+  - id: season_file
+    source: identify-production-season/production_season
+  - id: radius
+    source: radius
+  - id: vars
+    source: vars
+  - id: sensor_data_output
+    source: sensor_data_output
+  - id: frost_client_id
+    source: frost_client_id
+  - id: frost_client_secret
+    source: frost_client_secret
+  - id: frost_username
+    source: frost_username
+  - id: frost_password
+    source: frost_password
+  - id: frost_user_url
+    source: frost_user_url
+  run: ../csmTools/get-sensor-data.cwl
+  out:
+  - sensor_data

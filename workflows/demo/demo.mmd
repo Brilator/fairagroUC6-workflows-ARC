@@ -15,41 +15,116 @@ flowchart TB
   linkStyle default stroke:#385723,stroke-width: 2px;
   subgraph inputs[Workflow Inputs]
     direction TB
-    geojson(geojson)
+    trial_id(trial_id)
+    sensorthingsapi_url(sensorthingsapi_url)
+    ndvi_file(ndvi_file)
+    geojson_file(geojson_file)
+    sowing_date(sowing_date)
+    harvest_date(harvest_date)
+    results_csv(results_csv)
+    visualization_png(visualization_png)
+    template_path(template_path)
+    experiment_id(experiment_id)
+    field_data_output(field_data_output)
+    period(period)
+    output_format(output_format)
+    production_season_output(production_season_output)
+    lon(lon)
+    lat(lat)
+    radius(radius)
+    vars(vars)
+    sensor_data_output(sensor_data_output)
+    frost_client_id(frost_client_id)
+    frost_client_secret(frost_client_secret)
+    frost_username(frost_username)
+    frost_password(frost_password)
+    frost_user_url(frost_user_url)
   end
   subgraph outputs[Workflow Outputs]
     direction TB
-    results_png(results_png)
-    results_csv(results_csv)
-    ndvi_file(ndvi_file)
+    phenology_results_png(phenology_results_png)
+    phenology_results_csv(phenology_results_csv)
+    ndvi_timeseries(ndvi_timeseries)
+    field_data(field_data)
+    production_season(production_season)
+    sensor_data(sensor_data)
   end
     fetch-ndvi(fetch-ndvi)
-    fetch-ndvi_trial_id(Goetheweg-2024)
-  fetch-ndvi_trial_id --> |trial_id|fetch-ndvi
-    fetch-ndvi_sensorthingsapi_url(https://tuzehez-fairagro.srv.mwn.de/frost/v1.1)
-  fetch-ndvi_sensorthingsapi_url --> |sensorthingsapi_url|fetch-ndvi
-    fetch-ndvi_ndvi_file(data/ndvi_goetheweg_2024.csv)
-  fetch-ndvi_ndvi_file --> |ndvi_file|fetch-ndvi
+  trial_id --> |trial_id|fetch-ndvi
+  sensorthingsapi_url --> |sensorthingsapi_url|fetch-ndvi
+  ndvi_file --> |ndvi_file|fetch-ndvi
     phenology-analyzer(phenology-analyzer)
   fetch-ndvi --> |ndvi_file|phenology-analyzer
-  geojson --> |geojson_file|phenology-analyzer
-    phenology-analyzer_sowing_date(03.10.2023)
-  phenology-analyzer_sowing_date --> |sowing_date|phenology-analyzer
-    phenology-analyzer_harvest_date(30.07.2024)
-  phenology-analyzer_harvest_date --> |harvest_date|phenology-analyzer
-  phenology-analyzer --> |results_png|results_png
-  phenology-analyzer --> |results_csv|results_csv
-  fetch-ndvi --> |ndvi_file|ndvi_file
+  geojson_file --> |geojson_file|phenology-analyzer
+  sowing_date --> |sowing_date|phenology-analyzer
+  harvest_date --> |harvest_date|phenology-analyzer
+  results_csv --> |results_csv|phenology-analyzer
+  visualization_png --> |visualization_png|phenology-analyzer
+    get-field-data(get-field-data)
+  template_path --> |template_path|get-field-data
+  experiment_id --> |experiment_id|get-field-data
+  field_data_output --> |field_data_output|get-field-data
+    get-field-data_headers(long)
+  get-field-data_headers --> |headers|get-field-data
+    identify-production-season(identify-production-season)
+  template_path --> |template_path|identify-production-season
+  experiment_id --> |experiment_id|identify-production-season
+  period --> |period|identify-production-season
+  output_format --> |output_format|identify-production-season
+  production_season_output --> |production_season_output|identify-production-season
+    get-sensor-data(get-sensor-data)
+  lon --> |lon|get-sensor-data
+  lat --> |lat|get-sensor-data
+  identify-production-season --> |season_file|get-sensor-data
+  radius --> |radius|get-sensor-data
+  vars --> |vars|get-sensor-data
+  sensor_data_output --> |sensor_data_output|get-sensor-data
+  frost_client_id --> |frost_client_id|get-sensor-data
+  frost_client_secret --> |frost_client_secret|get-sensor-data
+  frost_username --> |frost_username|get-sensor-data
+  frost_password --> |frost_password|get-sensor-data
+  frost_user_url --> |frost_user_url|get-sensor-data
+  phenology-analyzer --> |phenology_results_png|phenology_results_png
+  phenology-analyzer --> |phenology_results_csv|phenology_results_csv
+  fetch-ndvi --> |ndvi_timeseries|ndvi_timeseries
+  get-field-data --> |field_data|field_data
+  identify-production-season --> |production_season|production_season
+  get-sensor-data --> |sensor_data|sensor_data
   style inputs fill:#EEEEEE,stroke-width:2px;
-  style geojson stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style trial_id stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style sensorthingsapi_url stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style ndvi_file stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style geojson_file stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style sowing_date stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style harvest_date stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style results_csv stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style visualization_png stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style template_path stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style experiment_id stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style field_data_output stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style period stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style output_format stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style production_season_output stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style lon stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style lat stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style radius stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style vars stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style sensor_data_output stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style frost_client_id stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style frost_client_secret stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style frost_username stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style frost_password stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style frost_user_url stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
   style outputs fill:#EEEEEE,stroke-width:2px;
-  style results_png stroke:#823909,fill:#F8CBAD,stroke-width:2px;
-  style results_csv stroke:#823909,fill:#F8CBAD,stroke-width:2px;
-  style ndvi_file stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style phenology_results_png stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style phenology_results_csv stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style ndvi_timeseries stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style field_data stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style production_season stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style sensor_data stroke:#823909,fill:#F8CBAD,stroke-width:2px;
   style fetch-ndvi stroke:#385723,stroke-width:2px;
-  style fetch-ndvi_trial_id font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
-  style fetch-ndvi_sensorthingsapi_url font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
-  style fetch-ndvi_ndvi_file font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
   style phenology-analyzer stroke:#385723,stroke-width:2px;
-  style phenology-analyzer_sowing_date font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
-  style phenology-analyzer_harvest_date font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
+  style get-field-data stroke:#385723,stroke-width:2px;
+  style get-field-data_headers font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
+  style identify-production-season stroke:#385723,stroke-width:2px;
+  style get-sensor-data stroke:#385723,stroke-width:2px;
