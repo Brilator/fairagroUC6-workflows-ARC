@@ -13,43 +13,394 @@ config:
 ---
 flowchart TB
   linkStyle default stroke:#385723,stroke-width: 2px;
+
   subgraph inputs[Workflow Inputs]
     direction TB
-    geojson(geojson)
+    trial_id(trial_id)
+    sensorthingsapi_url(sensorthingsapi_url)
+    ndvi_file(ndvi_file)
+    geojson_file(geojson_file)
+    sowing_date(sowing_date)
+    harvest_date(harvest_date)
+    results_csv(results_csv)
+    visualization_png(visualization_png)
+    template_path(template_path)
+    experiment_id(experiment_id)
+    lon(lon)
+    lat(lat)
+    radius(radius)
+    vars(vars)
+    gs_codes(gs_codes)
+    depth_seq(depth_seq)
+    paw(paw)
+    total_n(total_n)
+    simulations_output_dir(simulations_output_dir)
+    plot_output_file(plot_output_file)
+    plot_treatment_labels(plot_treatment_labels)
+    plot_legend_title(plot_legend_title)
+  end
+
+  subgraph outputs[Workflow Outputs]
+    direction TB
+    phenology_results_png(phenology_results_png)
+    phenology_results_csv(phenology_results_csv)
+    ndvi_timeseries(ndvi_timeseries)
+    field_data_out(field_data)
+    production_season_out(production_season)
+    sensor_data_out(sensor_data)
+    sensor_data_icasa_out(sensor_data_icasa)
+    nasa_data_out(nasa_data)
+    nasa_data_icasa_out(nasa_data_icasa)
+    soil_data_out(soil_data)
+    gs_dates_out(gs_dates)
+    gs_dates_icasa_out(gs_dates_icasa)
+    assembled_icasa_out(assembled_icasa)
+    dataset_dssat_out(dataset_dssat)
+    normalized_soil_out(normalized_soil)
+    initial_layers_out(initial_layers)
+    simulations_dir_out(simulations_dir)
+    growth_plot_out(growth_plot)
+  end
+
+  %% ── Phenology branch ──────────────────────────────────────────────────────
+  fetch-ndvi(fetch-ndvi)
+  trial_id            --> |trial_id|fetch-ndvi
+  sensorthingsapi_url --> |sensorthingsapi_url|fetch-ndvi
+  ndvi_file           --> |ndvi_file|fetch-ndvi
+
+  phenology-analyzer(phenology-analyzer)
+  fetch-ndvi        --> |ndvi_file|phenology-analyzer
+  geojson_file      --> |geojson_file|phenology-analyzer
+  sowing_date       --> |sowing_date|phenology-analyzer
+  harvest_date      --> |harvest_date|phenology-analyzer
+  results_csv       --> |results_csv|phenology-analyzer
+  visualization_png --> |visualization_png|phenology-analyzer
+
+  phenology-analyzer --> |phenology_results_png|phenology_results_png
+  phenology-analyzer --> |phenology_results_csv|phenology_results_csv
+  fetch-ndvi         --> |ndvi_timeseries|ndvi_timeseries
+
+  %% ── Field data ────────────────────────────────────────────────────────────
+  get-field-data(get-field-data)
+  template_path --> |template_path|get-field-data
+  experiment_id --> |experiment_id|get-field-data
+  get-field-data_headers(long)
+  get-field-data_headers --> |headers|get-field-data
+
+  identify-production-season(identify-production-season)
+  get-field-data --> |field_data|identify-production-season
+
+  get-field-data              --> |field_data|field_data_out
+  identify-production-season  --> |production_season|production_season_out
+
+  %% ── Sensor + NASA weather ─────────────────────────────────────────────────
+  get-sensor-data(get-sensor-data)
+  lon    --> |lon|get-sensor-data
+  lat    --> |lat|get-sensor-data
+  identify-production-season --> |season_file|get-sensor-data
+  radius --> |radius|get-sensor-data
+  vars   --> |vars|get-sensor-data
+
+  convert-sensor-data-icasa(convert-sensor-data-icasa)
+  get-sensor-data --> |sensor_data|convert-sensor-data-icasa
+  conv_sen_from(user)
+  conv_sen_from --> |from_format|convert-sensor-data-icasa
+  conv_sen_uc(na)
+  conv_sen_uc --> |unmatched_code|convert-sensor-data-icasa
+
+  get-weather-data(get-weather-data)
+  lon --> |lon|get-weather-data
+  lat --> |lat|get-weather-data
+  identify-production-season --> |season_file|get-weather-data
+
+  convert-nasa-data-icasa(convert-nasa-data-icasa)
+  get-weather-data --> |nasa_data|convert-nasa-data-icasa
+
+  get-sensor-data           --> |sensor_data|sensor_data_out
+  convert-sensor-data-icasa --> |sensor_data_icasa|sensor_data_icasa_out
+  get-weather-data          --> |nasa_data|nasa_data_out
+  convert-nasa-data-icasa   --> |nasa_data_icasa|nasa_data_icasa_out
+
+  %% ── Soil profile ──────────────────────────────────────────────────────────
+  get-soil-profile(get-soil-profile)
+  lon --> |lon|get-soil-profile
+  lat --> |lat|get-soil-profile
+
+  get-soil-profile --> |soil_data|soil_data_out
+
+  %% ── Growth stage dates ────────────────────────────────────────────────────
+  lookup-gs-dates(lookup-gs-dates)
+  phenology-analyzer --> |phenology_results_csv|lookup-gs-dates
+  gs_codes --> |gs_codes|lookup-gs-dates
+
+  convert-gs-dates-icasa(convert-gs-dates-icasa)
+  lookup-gs-dates --> |gs_dates|convert-gs-dates-icasa
+
+  lookup-gs-dates        --> |gs_dates|gs_dates_out
+  convert-gs-dates-icasa --> |gs_dates_icasa|gs_dates_icasa_out
+
+  %% ── Dataset assembly ──────────────────────────────────────────────────────
+  assemble-icasa-dataset(assemble-icasa-dataset)
+  convert-sensor-data-icasa --> |sensor_icasa|assemble-icasa-dataset
+  convert-nasa-data-icasa   --> |nasa_icasa|assemble-icasa-dataset
+  get-soil-profile          --> |soil_data|assemble-icasa-dataset
+  get-field-data            --> |field_data|assemble-icasa-dataset
+  convert-gs-dates-icasa    --> |gs_dates_icasa|assemble-icasa-dataset
+
+  convert-icasa-dssat(convert-icasa-dssat)
+  assemble-icasa-dataset --> |assembled_icasa|convert-icasa-dssat
+
+  assemble-icasa-dataset --> |assembled_icasa|assembled_icasa_out
+  convert-icasa-dssat    --> |dataset_dssat|dataset_dssat_out
+
+  %% ── Soil normalisation + initial conditions ───────────────────────────────
+  normalize-soil-profile(normalize-soil-profile)
+  convert-icasa-dssat --> |dataset_dssat|normalize-soil-profile
+
+  calculate-initial-layers(calculate-initial-layers)
+  convert-icasa-dssat --> |dataset_dssat|calculate-initial-layers
+
+  normalize-soil-profile   --> |normalized_soil|normalized_soil_out
+  calculate-initial-layers --> |initial_layers|initial_layers_out
+
+  %% ── DSSAT simulation ──────────────────────────────────────────────────────
+  build-simulation-files(build-simulation-files)
+  convert-icasa-dssat --> |dataset_dssat|build-simulation-files
+  depth_seq --> |depth_seq|build-simulation-files
+  paw       --> |paw|build-simulation-files
+  total_n   --> |total_n|build-simulation-files
+
+  run-simulations(run-simulations)
+  build-simulation-files --> |filex|run-simulations
+  build-simulation-files --> |soil_file|run-simulations
+  build-simulation-files --> |weather_files|run-simulations
+  simulations_output_dir --> |output_dir|run-simulations
+
+  %% ── Plot results ──────────────────────────────────────────────────────────
+  plot-results(plot-results)
+  run-simulations       --> |simulations_dir|plot-results
+  plot_output_file      --> |output_file|plot-results
+  plot_treatment_labels --> |treatment_labels|plot-results
+  plot_legend_title     --> |legend_title|plot-results
+
+  run-simulations --> |simulations_dir|simulations_dir_out
+  plot-results    --> |growth_plot|growth_plot_out
+
+  %% ── Styles ────────────────────────────────────────────────────────────────
+  style inputs fill:#EEEEEE,stroke-width:2px;
+  style outputs fill:#EEEEEE,stroke-width:2px;
+
+  style trial_id stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style sensorthingsapi_url stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style ndvi_file stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style geojson_file stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style sowing_date stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style harvest_date stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style results_csv stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style visualization_png stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style template_path stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style experiment_id stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style lon stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style lat stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style radius stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style vars stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style gs_codes stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style depth_seq stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style paw stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style total_n stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style simulations_output_dir stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style plot_output_file stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style plot_treatment_labels stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style plot_legend_title stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+
+  style phenology_results_png stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style phenology_results_csv stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style ndvi_timeseries stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style field_data_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style production_season_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style sensor_data_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style sensor_data_icasa_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style nasa_data_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style nasa_data_icasa_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style soil_data_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style gs_dates_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style gs_dates_icasa_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style assembled_icasa_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style dataset_dssat_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style normalized_soil_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style initial_layers_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style simulations_dir_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style growth_plot_out stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+
+  style fetch-ndvi stroke:#385723,stroke-width:2px;
+  style phenology-analyzer stroke:#385723,stroke-width:2px;
+  style get-field-data stroke:#385723,stroke-width:2px;
+  style identify-production-season stroke:#385723,stroke-width:2px;
+  style get-sensor-data stroke:#385723,stroke-width:2px;
+  style convert-sensor-data-icasa stroke:#385723,stroke-width:2px;
+  style get-weather-data stroke:#385723,stroke-width:2px;
+  style convert-nasa-data-icasa stroke:#385723,stroke-width:2px;
+  style get-soil-profile stroke:#385723,stroke-width:2px;
+  style lookup-gs-dates stroke:#385723,stroke-width:2px;
+  style convert-gs-dates-icasa stroke:#385723,stroke-width:2px;
+  style assemble-icasa-dataset stroke:#385723,stroke-width:2px;
+  style convert-icasa-dssat stroke:#385723,stroke-width:2px;
+  style normalize-soil-profile stroke:#385723,stroke-width:2px;
+  style calculate-initial-layers stroke:#385723,stroke-width:2px;
+  style build-simulation-files stroke:#385723,stroke-width:2px;
+  style run-simulations stroke:#385723,stroke-width:2px;
+  style plot-results stroke:#385723,stroke-width:2px;
+
+  style get-field-data_headers font-size:9px,fill:#cfeae6,stroke:#9FD6CE,stroke-width:2px;
+  style conv_sen_from font-size:9px,fill:#cfeae6,stroke:#9FD6CE,stroke-width:2px;
+  style conv_sen_uc font-size:9px,fill:#cfeae6,stroke:#9FD6CE,stroke-width:2px;
+
+  subgraph inputs[Workflow Inputs]
+    direction TB
+    trial_id(trial_id)
+    sensorthingsapi_url(sensorthingsapi_url)
+    ndvi_file(ndvi_file)
+    geojson_file(geojson_file)
+    sowing_date(sowing_date)
+    harvest_date(harvest_date)
+    results_csv(results_csv)
+    visualization_png(visualization_png)
+    template_path(template_path)
+    experiment_id(experiment_id)
+    field_data_output(field_data_output)
+    period(period)
+    output_format(output_format)
+    production_season_output(production_season_output)
+    lon(lon)
+    lat(lat)
+    radius(radius)
+    vars(vars)
+    sensor_data_output(sensor_data_output)
+    frost_client_id(frost_client_id)
+    frost_client_secret(frost_client_secret)
+    frost_username(frost_username)
+    frost_password(frost_password)
+    frost_user_url(frost_user_url)
+    sensor_icasa_output(sensor_icasa_output)
+    nasa_data_output(nasa_data_output)
+    nasa_icasa_output(nasa_icasa_output)
   end
   subgraph outputs[Workflow Outputs]
     direction TB
-    results_png(results_png)
-    results_csv(results_csv)
-    ndvi_file(ndvi_file)
+    phenology_results_png(phenology_results_png)
+    phenology_results_csv(phenology_results_csv)
+    ndvi_timeseries(ndvi_timeseries)
+    field_data(field_data)
+    production_season(production_season)
+    sensor_data(sensor_data)
+    sensor_data_icasa(sensor_data_icasa)
+    nasa_data(nasa_data)
+    nasa_data_icasa(nasa_data_icasa)
   end
     fetch-ndvi(fetch-ndvi)
-    fetch-ndvi_trial_id(Goetheweg-2024)
-  fetch-ndvi_trial_id --> |trial_id|fetch-ndvi
-    fetch-ndvi_sensorthingsapi_url(https://tuzehez-fairagro.srv.mwn.de/frost/v1.1)
-  fetch-ndvi_sensorthingsapi_url --> |sensorthingsapi_url|fetch-ndvi
-    fetch-ndvi_ndvi_file(data/ndvi_goetheweg_2024.csv)
-  fetch-ndvi_ndvi_file --> |ndvi_file|fetch-ndvi
+  trial_id --> |trial_id|fetch-ndvi
+  sensorthingsapi_url --> |sensorthingsapi_url|fetch-ndvi
+  ndvi_file --> |ndvi_file|fetch-ndvi
     phenology-analyzer(phenology-analyzer)
   fetch-ndvi --> |ndvi_file|phenology-analyzer
-  geojson --> |geojson_file|phenology-analyzer
-    phenology-analyzer_sowing_date(03.10.2023)
-  phenology-analyzer_sowing_date --> |sowing_date|phenology-analyzer
-    phenology-analyzer_harvest_date(30.07.2024)
-  phenology-analyzer_harvest_date --> |harvest_date|phenology-analyzer
-  phenology-analyzer --> |results_png|results_png
-  phenology-analyzer --> |results_csv|results_csv
-  fetch-ndvi --> |ndvi_file|ndvi_file
+  geojson_file --> |geojson_file|phenology-analyzer
+  sowing_date --> |sowing_date|phenology-analyzer
+  harvest_date --> |harvest_date|phenology-analyzer
+  results_csv --> |results_csv|phenology-analyzer
+  visualization_png --> |visualization_png|phenology-analyzer
+    get-field-data(get-field-data)
+  template_path --> |template_path|get-field-data
+  experiment_id --> |experiment_id|get-field-data
+  field_data_output --> |field_data_output|get-field-data
+    get-field-data_headers(long)
+  get-field-data_headers --> |headers|get-field-data
+    identify-production-season(identify-production-season)
+  get-field-data --> |field_data|identify-production-season
+  period --> |period|identify-production-season
+  output_format --> |output_format|identify-production-season
+  production_season_output --> |production_season_output|identify-production-season
+    get-sensor-data(get-sensor-data)
+  lon --> |lon|get-sensor-data
+  lat --> |lat|get-sensor-data
+  identify-production-season --> |season_file|get-sensor-data
+  radius --> |radius|get-sensor-data
+  vars --> |vars|get-sensor-data
+  sensor_data_output --> |sensor_data_output|get-sensor-data
+  frost_client_id --> |frost_client_id|get-sensor-data
+  frost_client_secret --> |frost_client_secret|get-sensor-data
+  frost_username --> |frost_username|get-sensor-data
+  frost_password --> |frost_password|get-sensor-data
+  frost_user_url --> |frost_user_url|get-sensor-data
+    convert-sensor-data-icasa(convert-sensor-data-icasa)
+  get-sensor-data --> |sensor_data|convert-sensor-data-icasa
+  sensor_icasa_output --> |sensor_icasa_output|convert-sensor-data-icasa
+    convert-sensor-data-icasa_from_format(user)
+  convert-sensor-data-icasa_from_format --> |from_format|convert-sensor-data-icasa
+    convert-sensor-data-icasa_unmatched_code(na)
+  convert-sensor-data-icasa_unmatched_code --> |unmatched_code|convert-sensor-data-icasa
+    get-weather-data(get-weather-data)
+  lon --> |lon|get-weather-data
+  lat --> |lat|get-weather-data
+  identify-production-season --> |season_file|get-weather-data
+  nasa_data_output --> |nasa_data_output|get-weather-data
+    convert-nasa-data-icasa(convert-nasa-data-icasa)
+  get-weather-data --> |nasa_data|convert-nasa-data-icasa
+  nasa_icasa_output --> |nasa_icasa_output|convert-nasa-data-icasa
+  phenology-analyzer --> |phenology_results_png|phenology_results_png
+  phenology-analyzer --> |phenology_results_csv|phenology_results_csv
+  fetch-ndvi --> |ndvi_timeseries|ndvi_timeseries
+  get-field-data --> |field_data|field_data
+  identify-production-season --> |production_season|production_season
+  get-sensor-data --> |sensor_data|sensor_data
+  convert-sensor-data-icasa --> |sensor_data_icasa|sensor_data_icasa
+  get-weather-data --> |nasa_data|nasa_data
+  convert-nasa-data-icasa --> |nasa_data_icasa|nasa_data_icasa
   style inputs fill:#EEEEEE,stroke-width:2px;
-  style geojson stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style trial_id stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style sensorthingsapi_url stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style ndvi_file stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style geojson_file stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style sowing_date stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style harvest_date stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style results_csv stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style visualization_png stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style template_path stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style experiment_id stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style field_data_output stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style period stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style output_format stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style production_season_output stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style lon stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style lat stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style radius stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style vars stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style sensor_data_output stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style frost_client_id stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style frost_client_secret stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style frost_username stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style frost_password stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style frost_user_url stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style sensor_icasa_output stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style nasa_data_output stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
+  style nasa_icasa_output stroke:#0f9884,fill:#6FC1B5,stroke-width:2px;
   style outputs fill:#EEEEEE,stroke-width:2px;
-  style results_png stroke:#823909,fill:#F8CBAD,stroke-width:2px;
-  style results_csv stroke:#823909,fill:#F8CBAD,stroke-width:2px;
-  style ndvi_file stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style phenology_results_png stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style phenology_results_csv stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style ndvi_timeseries stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style field_data stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style production_season stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style sensor_data stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style sensor_data_icasa stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style nasa_data stroke:#823909,fill:#F8CBAD,stroke-width:2px;
+  style nasa_data_icasa stroke:#823909,fill:#F8CBAD,stroke-width:2px;
   style fetch-ndvi stroke:#385723,stroke-width:2px;
-  style fetch-ndvi_trial_id font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
-  style fetch-ndvi_sensorthingsapi_url font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
-  style fetch-ndvi_ndvi_file font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
   style phenology-analyzer stroke:#385723,stroke-width:2px;
-  style phenology-analyzer_sowing_date font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
-  style phenology-analyzer_harvest_date font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
+  style get-field-data stroke:#385723,stroke-width:2px;
+  style get-field-data_headers font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
+  style identify-production-season stroke:#385723,stroke-width:2px;
+  style get-sensor-data stroke:#385723,stroke-width:2px;
+  style convert-sensor-data-icasa stroke:#385723,stroke-width:2px;
+  style convert-sensor-data-icasa_from_format font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
+  style convert-sensor-data-icasa_unmatched_code font-size:9px,fill:#cfeae6, stroke:#9FD6CE,stroke-width:2px;
+  style get-weather-data stroke:#385723,stroke-width:2px;
+  style convert-nasa-data-icasa stroke:#385723,stroke-width:2px;
