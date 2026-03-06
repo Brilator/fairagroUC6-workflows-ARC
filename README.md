@@ -73,9 +73,7 @@ fairagroUC6-workflows/
     │   └── plot-results.cwl            # Plot simulated vs. observed growth
     │
     ├── demo/
-    │   └── demo.cwl            # Top-level workflow wiring all steps above
-    │
-    └── csmWorkflow/
-        └── csm-workflow.cwl    # Alternative / pruned workflow variant
+        └── demo.cwl            # Top-level workflow wiring all steps above
+    
 ```
 
