@@ -157,7 +157,7 @@ steps:
     source: sensorthingsapi_url
   - id: ndvi_file
     source: ndvi_file
-  run: ../raster2sensorTools/fetch-ndvi.cwl
+  run: ./raster2sensorTools/fetch-ndvi.cwl
   out:
   - ndvi_timeseries
 - id: phenology-analyzer
@@ -174,7 +174,7 @@ steps:
     source: results_csv
   - id: visualization_png
     source: visualization_png
-  run: ../phenocoverTools/phenology-analyzer.cwl
+  run: ./phenocoverTools/phenology-analyzer.cwl
   out:
   - phenology_results_csv
   - phenology_results_png
@@ -186,7 +186,7 @@ steps:
     source: experiment_id
   - id: field_data_output
     source: field_data_output
-  run: ../csmTools/get-field-data.cwl
+  run: ./csmTools/get-field-data.cwl
   out:
   - field_data
 - id: identify-production-season
@@ -199,7 +199,7 @@ steps:
     source: output_format
   - id: production_season_output
     source: production_season_output
-  run: ../csmTools/identify-production-season.cwl
+  run: ./csmTools/identify-production-season.cwl
   out:
   - production_season
   - start_date
@@ -228,7 +228,7 @@ steps:
     source: frost_password
   - id: frost_user_url
     source: frost_user_url
-  run: ../csmTools/get-sensor-data.cwl
+  run: ./csmTools/get-sensor-data.cwl
   out:
   - sensor_data
 - id: convert-sensor-data-icasa
@@ -237,7 +237,7 @@ steps:
     source: get-sensor-data/sensor_data
   - id: sensor_icasa_output
     source: sensor_icasa_output
-  run: ../csmTools/convert-sensor-data-icasa.cwl
+  run: ./csmTools/convert-sensor-data-icasa.cwl
   out:
   - sensor_data_icasa
 - id: get-weather-data
@@ -250,7 +250,7 @@ steps:
     source: identify-production-season/production_season
   - id: nasa_data_output
     source: nasa_data_output
-  run: ../csmTools/get-weather-data.cwl
+  run: ./csmTools/get-weather-data.cwl
   out:
   - nasa_data
 - id: convert-nasa-data-icasa
@@ -259,7 +259,7 @@ steps:
     source: get-weather-data/nasa_data
   - id: nasa_icasa_output
     source: nasa_icasa_output
-  run: ../csmTools/convert-nasa-data-icasa.cwl
+  run: ./csmTools/convert-nasa-data-icasa.cwl
   out:
   - nasa_data_icasa
 - id: get-soil-profile
@@ -270,7 +270,7 @@ steps:
     source: lat
   - id: soil_data_output
     source: soil_data_output
-  run: ../csmTools/get-soil-profile.cwl
+  run: ./csmTools/get-soil-profile.cwl
   out:
   - soil_data
 - id: lookup-gs-dates
@@ -281,7 +281,7 @@ steps:
     source: gs_codes
   - id: gs_dates_output
     source: gs_dates_output
-  run: ../csmTools/lookup-gs-dates.cwl
+  run: ./csmTools/lookup-gs-dates.cwl
   out:
   - gs_dates
 - id: convert-gs-dates-icasa
@@ -290,7 +290,7 @@ steps:
     source: lookup-gs-dates/gs_dates
   - id: gs_icasa_output
     source: gs_icasa_output
-  run: ../csmTools/convert-gs-dates-icasa.cwl
+  run: ./csmTools/convert-gs-dates-icasa.cwl
   out:
   - gs_dates_icasa
 - id: assemble-icasa-dataset
@@ -307,7 +307,7 @@ steps:
     source: convert-gs-dates-icasa/gs_dates_icasa
   - id: assembled_icasa_output
     source: assembled_icasa_output
-  run: ../csmTools/assemble-icasa-dataset.cwl
+  run: ./csmTools/assemble-icasa-dataset.cwl
   out:
   - assembled_icasa
 - id: convert-icasa-dssat
@@ -316,7 +316,7 @@ steps:
     source: assemble-icasa-dataset/assembled_icasa
   - id: dataset_dssat_output
     source: dataset_dssat_output
-  run: ../csmTools/convert-icasa-dssat.cwl
+  run: ./csmTools/convert-icasa-dssat.cwl
   out:
   - dataset_dssat
 - id: normalize-soil-profile
@@ -325,7 +325,7 @@ steps:
     source: convert-icasa-dssat/dataset_dssat
   - id: normalized_soil_output
     source: normalized_soil_output
-  run: ../csmTools/normalize-soil-profile.cwl
+  run: ./csmTools/normalize-soil-profile.cwl
   out:
   - normalized_soil
 - id: calculate-initial-layers
@@ -334,7 +334,7 @@ steps:
     source: convert-icasa-dssat/dataset_dssat
   - id: initial_layers_output
     source: initial_layers_output
-  run: ../csmTools/calculate-initial-layers.cwl
+  run: ./csmTools/calculate-initial-layers.cwl
   out:
   - initial_layers
 - id: build-simulation-files
@@ -347,7 +347,7 @@ steps:
     source: paw
   - id: total_n
     source: total_n
-  run: ../csmTools/build-simulation-files.cwl
+  run: ./csmTools/build-simulation-files.cwl
   out:
   - filex
   - soil_file
@@ -364,7 +364,7 @@ steps:
     source: treatments
   - id: output_dir
     source: simulations_output_dir
-  run: ../csmTools/run-simulations.cwl
+  run: ./csmTools/run-simulations.cwl
   out:
   - simulations_dir
 - id: plot-results
@@ -377,6 +377,6 @@ steps:
     source: plot_treatment_labels
   - id: legend_title
     source: plot_legend_title
-  run: ../csmTools/plot-results.cwl
+  run: ./csmTools/plot-results.cwl
   out:
   - growth_plot
