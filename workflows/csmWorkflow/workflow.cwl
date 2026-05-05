@@ -32,16 +32,10 @@ inputs:
   default: 49.20868
   doc: Field latitude coordinate
 
-# Time period
-- id: start_date
-  type: string
-  default: "2024-01-01"
-  doc: Start date for data collection (YYYY-MM-DD)
-
-- id: end_date
-  type: string
-  default: "2025-08-09"
-  doc: End date for data collection (YYYY-MM-DD)
+# Input file for 
+- id: season_file
+  type: File
+  doc: JSON file from identify-production-season with start_date/end_date fields
 
 # Growth stage parameters
 - id: gs_scale
@@ -115,73 +109,63 @@ steps:
 - id: lookup-gs-dates
   run: ./csmTools/lookup-gs-dates.cwl
   in:
-  - id: phenology_results
+  - id: phenology_csv
     source: phenology-analyzer/phenology_results_csv
   - id: gs_scale
     source: gs_scale
   - id: gs_codes
     source: gs_codes
-  out: [phenology_json]
+  out: [gs_dates]
 
 # Step 4: Convert phenology data to ICASA format
 - id: convert-phenology
-  run: ./csmTools/convert-dataset.cwl
+  run: ./csmTools/convert-gs-dates-icasa.cwl
   in:
-  - id: input_file
-    source: lookup-gs-dates/phenology_json
-  - id: input_model
-    valueFrom: "user"
-  - id: output_model
-    valueFrom: "icasa"
-  - id: output_filename
+  - id: gs_dates
+    source: lookup-gs-dates/gs_dates
+  - id: gs_icasa_output
     valueFrom: "phenology_icasa.json"
   out: [converted_data]
 
 # Step 5: Download weather data from NASA POWER
 - id: get-weather
-  run: ./csmTools/get-weather.cwl
+  run: ./csmTools/get-weather-data.cwl
   in:
-  - id: longitude
+  - id: lon
     source: longitude
-  - id: latitude
+  - id: lat
     source: latitude
-  - id: start_date
-    source: start_date
-  - id: end_date
-    source: end_date
-  - id: output_filename
+  - id: season_file
+    source: season_file
+  - id: nasa_data_output
     valueFrom: "weather_nasapower.json"
-  out: [weather_data]
+  out: [nasa_data]
 
 # Step 6: Convert weather data to ICASA format
 - id: convert-weather
-  run: ./csmTools/convert-dataset.cwl
+  run: ./csmTools/convert-nasa-data-icasa.cwl
   in:
-  - id: input_file
-    source: get-weather/weather_data
-  - id: input_model
-    valueFrom: "nasa-power"
-  - id: output_model
-    valueFrom: "icasa"
-  - id: output_filename
+  - id: nasa_data
+    source: get-weather/nasa_data
+  - id: nasa_icasa_output
     valueFrom: "weather_icasa.json"
   out: [converted_data]
 
 # Step 7: Get soil profile data
 - id: get-soil
-  run: ./csmTools/get-soil.cwl
+  run: ./csmTools/get-soil-profile.cwl
   in:
-  - id: longitude
+  - id: lon
     source: longitude
-  - id: latitude
+  - id: lat
     source: latitude
-  - id: output_filename
+  - id: soil_data_output
     valueFrom: "soil_icasa.json"
   out: [soil_data]
 
 # Step 8: Assemble all data sources
 - id: assemble-data
-  run: ./csmTools/assemble-dataset.cwl
+  run: ./csmTools/assemble-icasa-dataset.cwl
   in:
   - id: component_files
     source:
