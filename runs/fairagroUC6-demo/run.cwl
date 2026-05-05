@@ -3,6 +3,9 @@
 cwlVersion: v1.2
 class: Workflow
 
+requirements:
+  SubworkflowFeatureRequirement: {}
+
 inputs:
 - id: trial_id
   type: string
@@ -140,7 +143,7 @@ steps:
       simulations_output_dir: simulations_output_dir
       treatments: treatments
       plot_output_file: plot_output_file
-      plot_treatment_labels: stplot_treatment_labels 
+      plot_treatment_labels: plot_treatment_labels 
       plot_legend_title: plot_legend_title
     out:
       - phenology_results_png
