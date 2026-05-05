@@ -1,0 +1,10 @@
+geojson:
+  class: File
+  path: data/field_location.geojson
+
+longitude: 10.645269
+latitude: 49.20868
+start_date: "2024-01-01"
+end_date: "2025-08-09"
+gs_scale: "zadoks"
+gs_codes: "65,87"  # Anthesis and maturity
