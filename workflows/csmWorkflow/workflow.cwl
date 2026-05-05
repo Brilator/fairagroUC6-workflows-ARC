@@ -95,13 +95,13 @@ outputs:
 steps:
 # Step 1: Fetch NDVI data (from demo workflow)
 - id: fetch-ndvi
-  run: ../raster2sensorTools/fetch-ndvi.cwl
+  run: ./raster2sensorTools/fetch-ndvi.cwl
   in: []
   out: [ndvi_timeseries]
 
 # Step 2: Run phenology analysis (from demo workflow)
 - id: phenology-analyzer
-  run: ../phenocoverTools/phenology-analyzer.cwl
+  run: ./phenocoverTools/phenology-analyzer.cwl
   in:
   - id: ndvi_file
     source: fetch-ndvi/ndvi_timeseries
@@ -113,7 +113,7 @@ steps:
 
 # Step 3: Extract growth stage dates from phenology results
 - id: lookup-gs-dates
-  run: ../csmTools/lookup-gs-dates.cwl
+  run: ./csmTools/lookup-gs-dates.cwl
   in:
   - id: phenology_results
     source: phenology-analyzer/phenology_results_csv
@@ -125,7 +125,7 @@ steps:
 
 # Step 4: Convert phenology data to ICASA format
 - id: convert-phenology
-  run: ../csmTools/convert-dataset.cwl
+  run: ./csmTools/convert-dataset.cwl
   in:
   - id: input_file
     source: lookup-gs-dates/phenology_json
@@ -139,7 +139,7 @@ steps:
 
 # Step 5: Download weather data from NASA POWER
 - id: get-weather
-  run: ../csmTools/get-weather.cwl
+  run: ./csmTools/get-weather.cwl
   in:
   - id: longitude
     source: longitude
@@ -155,7 +155,7 @@ steps:
 
 # Step 6: Convert weather data to ICASA format
 - id: convert-weather
-  run: ../csmTools/convert-dataset.cwl
+  run: ./csmTools/convert-dataset.cwl
   in:
   - id: input_file
     source: get-weather/weather_data
@@ -169,7 +169,7 @@ steps:
 
 # Step 7: Get soil profile data
 - id: get-soil
-  run: ../csmTools/get-soil.cwl
+  run: ./csmTools/get-soil.cwl
   in:
   - id: longitude
     source: longitude
@@ -181,7 +181,7 @@ steps:
 
 # Step 8: Assemble all data sources
 - id: assemble-data
-  run: ../csmTools/assemble-dataset.cwl
+  run: ./csmTools/assemble-dataset.cwl
   in:
   - id: component_files
     source:
