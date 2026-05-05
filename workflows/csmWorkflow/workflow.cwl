@@ -68,12 +68,12 @@ outputs:
 # CSM workflow outputs
 - id: growth_stage_dates
   type: File
-  outputSource: convert-phenology/converted_data
+  outputSource: convert-phenology/gs_dates_icasa
   doc: Growth stage dates in ICASA format for crop modeling
 
 - id: weather_data
   type: File
-  outputSource: convert-weather/converted_data
+  outputSource: convert-weather/nasa_data_icasa
   doc: Weather data in ICASA format
 
 - id: soil_data
@@ -83,7 +83,7 @@ outputs:
 
 - id: integrated_dataset
   type: File
-  outputSource: assemble-data/assembled_data
+  outputSource: assemble-data/assembled_icasa
   doc: Fully integrated dataset for crop modeling
 
 steps:
@@ -125,7 +125,7 @@ steps:
     source: lookup-gs-dates/gs_dates
   - id: gs_icasa_output
     valueFrom: "phenology_icasa.json"
-  out: [converted_data]
+  out: [gs_dates_icasa]
 
 # Step 5: Download weather data from NASA POWER
 - id: get-weather
@@ -149,7 +149,7 @@ steps:
     source: get-weather/nasa_data
   - id: nasa_icasa_output
     valueFrom: "weather_icasa.json"
-  out: [converted_data]
+  out: [nasa_data_icasa]
 
 # Step 7: Get soil profile data
 - id: get-soil
@@ -167,13 +167,17 @@ steps:
 - id: assemble-data
   run: ./csmTools/assemble-icasa-dataset.cwl
   in:
-  - id: component_files
+  - id: sensor_icasa
+# TODO TODO
     source:
-    - convert-phenology/converted_data
-    - convert-weather/converted_data
-    - get-soil/soil_data
-  - id: action
-    valueFrom: "merge_properties"
-  - id: output_filename
-    valueFrom: "integrated_dataset.json"
-  out: [assembled_data]
+  - id: nasa_icasa
+    source: convert-weather/nasa_data_icasa
+  - id: soil_data
+    source: get-soil/soil_data
+  - id: field_data
+    source: geojson
+  - id: gs_dates_icasa
+    source: convert-phenology/gs_dates_icasa
+  - id: assembled_icasa_output
+    valueFrom: "assembled_icasa.json"
+  out: [assembled_icasa]
