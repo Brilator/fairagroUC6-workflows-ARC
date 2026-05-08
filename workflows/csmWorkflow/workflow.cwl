@@ -48,12 +48,12 @@ inputs:
 
 # Location parameters for data acquisition
 - id: longitude
-  type: double
+  type: float
   default: 10.645269
   doc: Field longitude coordinate
 
 - id: latitude
-  type: double
+  type: float
   default: 49.20868
   doc: Field latitude coordinate
 
