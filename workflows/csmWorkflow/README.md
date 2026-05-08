@@ -1,5 +1,15 @@
 # CSM Workflow - Integrated Phenology and Crop Modeling
 
+
+## Draw workflow from CWL file
+
+```bash
+cwltool --print-dot workflow.cwl | dot -Tsvg > workflow.svg
+```
+
+![workflow.cwl](workflow.svg)
+
+
 ## Overview
 This workflow extends the demo phenology workflow by integrating it with crop simulation modeling using DSSAT. It combines:
 - **Remote sensing data**: NDVI time series from SensorThings API
