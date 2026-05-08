@@ -12,6 +12,9 @@ doc: |
   4. Downloading weather and soil data
   5. Assembling all data for crop simulation with DSSAT
 
+requirements:
+  SubworkflowFeatureRequirement: {} 
+
 
 ####################################
 #### Inputs
@@ -37,7 +40,7 @@ inputs:
 ####################################
 
 steps:
-  csmWorkflow
+  csmWorkflow:
     run: ../../workflows/csmWorkflow/workflow.cwl
     in:
       trial_id: trial_id
