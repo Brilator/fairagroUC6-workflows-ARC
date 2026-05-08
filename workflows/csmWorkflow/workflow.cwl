@@ -18,12 +18,32 @@ doc: |
 ####################################
 
 inputs:
+# Inputs fetch-ndvi
+- id: trial_id
+  type: string
+- id: sensorthingsapi_url
+  type: string
+- id: ndvi_file
+  type: string
+
+# Inputs phenology-analyzer
+
+- id: sowing_date
+  type: string
+- id: harvest_date
+  type: string
+- id: results_csv
+  type: string
+- id: visualization_png
+  type: string
+
 # Inputs from demo workflow
 - id: geojson
   type: File
   default:
     class: File
-    path: ../../data/field_location.geojson
+    # TODO: add path to run.yml
+    # path: ../../data/field_location.geojson
   doc: Field location GeoJSON file
 
 # Location parameters for data acquisition
@@ -62,7 +82,10 @@ steps:
 # Step 1: Fetch NDVI data (from demo workflow)
 - id: fetch-ndvi
   run: ./raster2sensorTools/fetch-ndvi.cwl
-  in: []
+  in:
+    trial_id: trial_id
+    sensorthingsapi_url: sensorthingsapi_url
+    ndvi_file: ndvi_file
   out: [ndvi_timeseries]
 
 # Step 2: Run phenology analysis (from demo workflow)
@@ -73,6 +96,14 @@ steps:
     source: fetch-ndvi/ndvi_timeseries
   - id: geojson_file
     source: geojson
+  - id: sowing_date
+    source: sowing_date
+  - id: harvest_date
+    source: harvest_date
+  - id: results_csv
+    source: results_csv
+  - id: visualization_png
+    source: visualization_png
   out:
   - phenology_results_csv
   - phenology_results_png
@@ -141,7 +172,7 @@ steps:
   in:
   - id: sensor_icasa
 # TODO TODO
-    source:
+    # source:
   - id: nasa_icasa
     source: convert-weather/nasa_data_icasa
   - id: soil_data
