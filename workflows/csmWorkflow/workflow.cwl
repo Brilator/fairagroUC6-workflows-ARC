@@ -12,6 +12,11 @@ doc: |
   4. Downloading weather and soil data
   5. Assembling all data for crop simulation with DSSAT
 
+
+####################################
+#### Inputs
+####################################
+
 inputs:
 # Inputs from demo workflow
 - id: geojson
@@ -48,43 +53,10 @@ inputs:
   default: "65,87"
   doc: Zadoks codes for key growth stages (65=anthesis, 87=maturity)
 
-outputs:
-# Original demo outputs
-- id: ndvi_timeseries
-  type: File
-  outputSource: fetch-ndvi/ndvi_timeseries
-  doc: NDVI time series data
 
-- id: phenology_results_csv
-  type: File
-  outputSource: phenology-analyzer/phenology_results_csv
-  doc: Detailed phenology analysis results
-
-- id: phenology_results_png
-  type: File
-  outputSource: phenology-analyzer/phenology_results_png
-  doc: Phenology visualization
-
-# CSM workflow outputs
-- id: growth_stage_dates
-  type: File
-  outputSource: convert-phenology/gs_dates_icasa
-  doc: Growth stage dates in ICASA format for crop modeling
-
-- id: weather_data
-  type: File
-  outputSource: convert-weather/nasa_data_icasa
-  doc: Weather data in ICASA format
-
-- id: soil_data
-  type: File
-  outputSource: get-soil/soil_data
-  doc: Soil profile data
-
-- id: integrated_dataset
-  type: File
-  outputSource: assemble-data/assembled_icasa
-  doc: Fully integrated dataset for crop modeling
+####################################
+#### Steps
+####################################
 
 steps:
 # Step 1: Fetch NDVI data (from demo workflow)
@@ -181,3 +153,45 @@ steps:
   - id: assembled_icasa_output
     valueFrom: "assembled_icasa.json"
   out: [assembled_icasa]
+
+####################################
+#### Outputs
+####################################
+
+outputs:
+# Original demo outputs
+- id: ndvi_timeseries
+  type: File
+  outputSource: fetch-ndvi/ndvi_timeseries
+  doc: NDVI time series data
+
+- id: phenology_results_csv
+  type: File
+  outputSource: phenology-analyzer/phenology_results_csv
+  doc: Detailed phenology analysis results
+
+- id: phenology_results_png
+  type: File
+  outputSource: phenology-analyzer/phenology_results_png
+  doc: Phenology visualization
+
+# CSM workflow outputs
+- id: growth_stage_dates
+  type: File
+  outputSource: convert-phenology/gs_dates_icasa
+  doc: Growth stage dates in ICASA format for crop modeling
+
+- id: weather_data
+  type: File
+  outputSource: convert-weather/nasa_data_icasa
+  doc: Weather data in ICASA format
+
+- id: soil_data
+  type: File
+  outputSource: get-soil/soil_data
+  doc: Soil profile data
+
+- id: integrated_dataset
+  type: File
+  outputSource: assemble-data/assembled_icasa
+  doc: Fully integrated dataset for crop modeling
