@@ -433,7 +433,7 @@ steps:
   - id: treatments
     source: treatments
   - id: output_dir
-    source: simulations_output_dir
+    source: dataset_dssat_output
   run: ./csmTools/run-simulations.cwl
   out:
   - simulations_dir
