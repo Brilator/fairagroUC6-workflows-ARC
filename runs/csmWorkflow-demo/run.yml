@@ -1,17 +1,63 @@
-## TODO ##
-trial_id:
-sensorthingsapi_url: 
-ndvi_file: 
-sowing_date:
-harvest_date:
-results_csv: 
-visualization_png: 
-## TODO ##
-geojson:
+## ── Primary data inputs ──────────────────────────────────────────────────────
+geojson_file:
   class: File
-  path: data/field_location.geojson
-longitude: 10.645269
-latitude: 49.20868
-season_file: File
-gs_scale: "zadoks"
-gs_codes: "65,87"
+  path: ../../data/field_location.geojson   # TODO: update path
+template_path:
+  class: File
+  path: ../../data/icasa_template.xlsx      # TODO: update path
+
+## ── Geographic coordinates ───────────────────────────────────────────────────
+lon: 10.645269      # TODO: update
+lat: 49.20868       # TODO: update
+
+## ── NDVI / phenology ─────────────────────────────────────────────────────────
+trial_id:           # TODO: e.g. "trial_001"
+sensorthingsapi_url: # TODO: e.g. "https://frost.example.org/FROST-Server/v1.1"
+sowing_date:        # TODO: e.g. "2023-10-15"
+harvest_date:       # TODO: e.g. "2024-07-20"
+
+## ── Growth stage extraction ──────────────────────────────────────────────────
+gs_codes: "65,87"   # Comma-separated Zadok scale codes
+
+## ── Field data / production season ──────────────────────────────────────────
+experiment_id:      # TODO: experiment identifier in the ICASA template
+period: "annual"
+output_format: "json"
+
+## ── Sensor data (SensorThings API / FROST via Keycloak) ───────────────────────────────────
+# Credentials are loaded from config.yml (gitignored); set values there
+radius: 500.0       # Search radius in metres
+vars:               # TODO: comma-separated sensor variable names
+frost_client_id:    # TODO: see config.yml
+frost_client_secret: # TODO: see config.yml
+frost_username:     # TODO: see config.yml
+frost_password:     # TODO: see config.yml
+frost_user_url:     # TODO: see config.yml
+
+## ── Simulation parameters ────────────────────────────────────────────────────
+paw: 50.0           # Percent available water (0–100)
+total_n: 147.0      # Total soil nitrogen in kg/ha
+treatments: "1,2"   # Comma-separated treatment numbers; omit for all
+depth_seq: "5,15,30,60,90,120"  # Target depth sequence in cm
+
+## ── Output filenames ─────────────────────────────────────────────────────────
+ndvi_file: "ndvi_timeseries.json"
+results_csv: "phenology_results.csv"
+visualization_png: "phenology_results.png"
+gs_dates_output: "gs_dates.json"
+gs_icasa_output: "gs_dates_icasa.json"
+field_data_output: "field_data.json"
+production_season_output: "production_season.json"
+sensor_data_output: "sensor_data.json"
+sensor_icasa_output: "sensor_data_icasa.json"
+nasa_data_output: "weather_nasapower.json"
+nasa_icasa_output: "weather_icasa.json"
+soil_data_output: "soil_icasa.json"
+assembled_icasa_output: "assembled_icasa.json"
+dataset_dssat_output: "dataset_dssat.json"
+normalized_soil_output: "normalized_soil.json"
+initial_layers_output: "initial_layers.json"
+output_dir: "simulations"
+plot_output_file: "growth_plot.png"
+plot_treatment_labels: "0 kg N/ha,147 kg N/ha"  # TODO: update per treatment
+plot_legend_title: "N treatment"                  # TODO: update
