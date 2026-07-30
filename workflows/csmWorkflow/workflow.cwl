@@ -433,7 +433,7 @@ steps:
   - id: treatments
     source: treatments
   - id: output_dir
-    source: simulations_output_dir
+    source: output_dir
   run: ./csmTools/run-simulations.cwl
   out:
   - simulations_dir
@@ -498,11 +498,11 @@ outputs:
   outputSource: identify-production-season/production_season
   doc: "Identified production season with start and end dates"
 
-# Outputs: get-sensor-data
-- id: sensor_data
-  type: File
-  outputSource: get-sensor-data/sensor_data
-  doc: "Raw sensor data retrieved from SensorThings API"
+# # Outputs: get-sensor-data
+# - id: sensor_data
+#   type: File
+#   outputSource: get-sensor-data/sensor_data
+#   doc: "Raw sensor data retrieved from SensorThings API"
 
 # Outputs: convert-sensor-data-icasa
 - id: sensor_data_icasa
